@@ -1,0 +1,26 @@
+{
+  "club": "Sociedade Esportiva Palmeiras",
+  "environment": "HML",
+  "fanbase": {
+    "min_supporters": 14000000,
+    "max_supporters": 17500000,
+    "avg_supporters": 15750000,
+    "brazil_preference_pct_min": 6.5,
+    "brazil_preference_pct_max": 8.1
+  },
+  "traffic_persona_weights": {
+    "news_readers_pct": 35,
+    "matchday_live_table_pct": 25,
+    "dynamic_searchers_pct": 15,
+    "catalog_media_stores_pct": 10,
+    "mobile_app_toapp_pct": 8,
+    "protocol_edge_matrix_pct": 7
+  },
+  "hml_infra_limits": {
+    "ec2_instance_type": "t3a.medium",
+    "vcpus": 2,
+    "ram_mb": 3863,
+    "php_fpm_max_children": 35,
+    "port_84_fastcgi_cache": false
+  }
+}

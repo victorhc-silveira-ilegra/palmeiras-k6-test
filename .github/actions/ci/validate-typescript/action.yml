@@ -1,0 +1,35 @@
+name: CI - TypeScript
+description: Matriz crash-first TypeScript e k6 via orquestrador
+
+runs:
+  using: composite
+  steps:
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+        cache: npm
+    - name: Configurar Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - name: Instalar Grafana k6
+      uses: grafana/setup-k6-action@v1
+    - name: Instalar dependencias Node
+      shell: bash
+      run: npm ci
+    - name: TypeScript | Lint
+      shell: bash
+      run: python3 scripts/operations/clean_workspace.py --area typescript --stage lint
+    - name: TypeScript | Seguranca
+      shell: bash
+      run: python3 scripts/operations/clean_workspace.py --area typescript --stage security
+    - name: TypeScript | Testes
+      shell: bash
+      run: python3 scripts/operations/clean_workspace.py --area typescript --stage test --coverage-fail-under 100
+    - name: TypeScript | Validate
+      shell: bash
+      run: python3 scripts/operations/clean_workspace.py --area typescript --stage validate
+    - name: TypeScript | Build
+      shell: bash
+      run: python3 scripts/operations/clean_workspace.py --area typescript --stage build

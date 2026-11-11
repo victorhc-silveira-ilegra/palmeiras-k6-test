@@ -1,0 +1,82 @@
+{
+  "generated_at_env": "hml",
+  "host_header": "hmlverdao.palmeiras.com.br",
+  "posts": [
+    {
+      "id": 174533,
+      "slug": "teste-imagens-com-novo-recurso",
+      "path": "/noticias/teste-imagens-com-novo-recurso/"
+    },
+    {
+      "id": 173875,
+      "slug": "com-piquerez-e-menino-verdao-se-reapresenta-apos-estreia-atuesta-projeta-2024",
+      "path": "/noticias/com-piquerez-e-menino-verdao-se-reapresenta-apos-estreia-atuesta-projeta-2024/"
+    },
+    {
+      "id": 173872,
+      "slug": "palmeiras-empata-com-novorizontino-e-chega-a-29-anos-sem-derrota-em-estreias-de-paulista",
+      "path": "/noticias/palmeiras-empata-com-novorizontino-e-chega-a-29-anos-sem-derrota-em-estreias-de-paulista/"
+    },
+    {
+      "id": 173827,
+      "slug": "ginastas-da-aerobica-do-verdao-conquistam-medalhas-no-campeonato-brasileiro",
+      "path": "/noticias/ginastas-da-aerobica-do-verdao-conquistam-medalhas-no-campeonato-brasileiro/"
+    },
+    {
+      "id": 173824,
+      "slug": "ginastica-aerobica-da-show-e-sobe-diversas-vezes-no-podio-do-campeonato-estadual",
+      "path": "/noticias/ginastica-aerobica-da-show-e-sobe-diversas-vezes-no-podio-do-campeonato-estadual/"
+    },
+    {
+      "id": 173509,
+      "slug": "verdao-encerra-1a-fase-do-estadual-como-lider-geral-e-unico-invicto-apos-empate-com-guarani-em-campinas",
+      "path": "/noticias/verdao-encerra-1a-fase-do-estadual-como-lider-geral-e-unico-invicto-apos-empate-com-guarani-em-campinas/"
+    },
+    {
+      "id": 173437,
+      "slug": "palmeiras-inicia-fase-presencial-da-pre-temporada-com-sete-campeoes-da-copinha-no-elenco",
+      "path": "/noticias/palmeiras-inicia-fase-presencial-da-pre-temporada-com-sete-campeoes-da-copinha-no-elenco/"
+    },
+    {
+      "id": 173435,
+      "slug": "pele-e-palmeiras-uma-relacao-de-admiracao-e-respeito",
+      "path": "/noticias/pele-e-palmeiras-uma-relacao-de-admiracao-e-respeito/"
+    }
+  ],
+  "pages": [
+    { "id": 18425, "slug": "noticias", "path": "/noticias/" },
+    { "id": 174796, "slug": "green-november", "path": "/green-november/" },
+    { "id": 174775, "slug": "semana-torcedor", "path": "/semana-torcedor/" },
+    { "id": 174755, "slug": "aplicativo-2026", "path": "/aplicativo-2026/" },
+    { "id": 174723, "slug": "avanti-brasil", "path": "/avanti-brasil/" },
+    { "id": 174643, "slug": "avanti-verde-palmeiras-pay", "path": "/avanti-verde-palmeiras-pay/" }
+  ],
+  "categories": [
+    { "id": 3060, "slug": "basquete", "count": 1149 },
+    { "id": 3070, "slug": "boxe", "count": 223 },
+    { "id": 3084, "slug": "atletismo", "count": 98 },
+    { "id": 919, "slug": "agenda-de-eventos", "count": 32 },
+    { "id": 3063, "slug": "ballet", "count": 25 },
+    { "id": 920, "slug": "agenda-esportiva", "count": 10 }
+  ],
+  "search_terms": [
+    "palmeiras",
+    "allianz",
+    "ingressos",
+    "elenco",
+    "libertadores",
+    "paulista",
+    "avanti",
+    "abel"
+  ],
+  "rest_endpoints_public": [
+    "/wp-json/wp/v2/posts?per_page=5",
+    "/wp-json/wp/v2/pages?per_page=5",
+    "/wp-json/apiverdao/v1/futebol/classificacao",
+    "/wp-json/apiverdao/v1/jogos-mes",
+    "/wp-json/apiverdao/v1/eventos-mes",
+    "/wp-json/apiverdao/v1/sep-lojas",
+    "/wp-json/apiverdao/v1/futebol/estatisticas",
+    "/wp-json/palmeiras/v1/fotos"
+  ]
+}

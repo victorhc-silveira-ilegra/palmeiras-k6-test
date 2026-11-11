@@ -1,0 +1,14 @@
+# Palmeiras K6 Test (HML) -- Release {VERSION}
+
+CI gerou uma nova versao da suite **palmeiras-k6-test** (exclusiva para HML).
+
+### Detalhes
+- **Versao:** `{VERSION}`
+- **Data:** `{DATE}`
+- **Stack:** TypeScript hexagonal/DDD, Vitest 100%, Grafana k6, Docker minimo
+
+### Historico
+{CHANGELOG}
+
+---
+Release automatico (semantic-release).

@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+_SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_SCRIPTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_ROOT))
+
+from operations.gates import AREAS, STAGES, run_area_stage
+
+
+def _print_summary(results: dict[str, str]) -> None:
+    print("\n========================================================================")
+    print("                      RESUMO DO PIPELINE CI/CD                          ")
+    print("========================================================================")
+    print("| Etapa      | Status  |")
+    print("|------------|---------|")
+    for step, status in results.items():
+        print(f"| {step:<10} | {status:<7} |")
+    print("========================================================================")
+
+
+def run_pipeline(coverage_fail_under: int = 100) -> None:
+    results: dict[str, str] = {}
+    print("\n========================================================================")
+    print("          PALMEIRAS K6 TEST (HML) - PIPELINE CI/CD LOCAL                ")
+    print("========================================================================")
+
+    print("\n>>> Executando: Commitlint (Conventional Commits)")
+    ret = subprocess.run(
+        ["bash", str(_REPO_ROOT / "linters" / "git-hooks" / "commitlint.sh")],
+        cwd=_REPO_ROOT,
+        check=False,
+    )
+    if ret.returncode != 0:
+        results["Commitlint"] = "FAILED"
+        _print_summary(results)
+        raise SystemExit(1)
+    results["Commitlint"] = "SUCCESS"
+
+    pipeline_stages = ("lint", "security", "test", "validate", "build")
+    for area in AREAS:
+        print("\n========================================================================")
+        print(f"                AREA: {area.upper()}                                    ")
+        print("========================================================================")
+        area_failed = False
+        for stage in pipeline_stages:
+            os.chdir(_REPO_ROOT)
+            try:
+                run_area_stage(
+                    area,
+                    stage,
+                    coverage_fail_under=coverage_fail_under,
+                )
+            except (SystemExit, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
+                print(f"[ERRO] {area} | {stage}: {exc}", file=sys.stderr)
+                area_failed = True
+                break
+        if area_failed:
+            results[area.capitalize()] = "FAILED"
+            _print_summary(results)
+            raise SystemExit(1)
+        results[area.capitalize()] = "SUCCESS"
+
+    _print_summary(results)
+    print("\n[SUCESSO] Pipeline local concluido com sucesso.")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Palmeiras K6 Test (HML) Quality Gate")
+    parser.add_argument(
+        "--area",
+        choices=[*AREAS, "all"],
+        default="all",
+        help="Area tecnologica (default: all)",
+    )
+    parser.add_argument(
+        "--stage",
+        required=True,
+        choices=list(STAGES),
+        help="Estagio a executar",
+    )
+    parser.add_argument(
+        "--coverage-fail-under",
+        type=int,
+        default=100,
+        help="Percentual minimo de cobertura",
+    )
+    parser.add_argument(
+        "--light-clean",
+        action="store_true",
+        help="Limpa apenas caches sem remover artefatos de build",
+    )
+    args = parser.parse_args()
+
+    if args.stage in {"pipeline", "all"}:
+        run_pipeline(coverage_fail_under=args.coverage_fail_under)
+        return
+
+    target_areas = (
+        ("typescript",)
+        if args.stage == "clean" and args.area == "all"
+        else (AREAS if args.area == "all" else (args.area,))
+    )
+    for area in target_areas:
+        os.chdir(_REPO_ROOT)
+        run_area_stage(
+            area,
+            args.stage,
+            coverage_fail_under=args.coverage_fail_under,
+            light_clean=args.light_clean,
+        )
+    print("\n[SUCESSO] Estagio concluido com sucesso.")
+
+
+if __name__ == "__main__":
+    main()

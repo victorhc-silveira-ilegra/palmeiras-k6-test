@@ -1,0 +1,11 @@
+.git/
+.gitignore
+.env
+.venv/
+node_modules/
+dist/
+coverage/
+reports/
+__pycache__/
+*.pyc
+.pytest_cache/

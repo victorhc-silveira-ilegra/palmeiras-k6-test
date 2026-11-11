@@ -1,0 +1,197 @@
+name: CI/CD - Pipeline principal
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".agents/**"
+      - ".dockerignore"
+      - ".gitignore"
+      - ".github/**"
+      - ".pre-commit-config.yaml"
+      - "AGENTS.md"
+      - "data/**"
+      - "docs/**"
+      - "eslint.config.mjs"
+      - "infra/**"
+      - "linters/**"
+      - "Makefile"
+      - "package.json"
+      - "package-lock.json"
+      - "README.md"
+      - "scripts/**"
+      - "src/**"
+      - "tests/**"
+      - "tsconfig*.json"
+      - "vitest.config.ts"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".agents/**"
+      - ".dockerignore"
+      - ".gitignore"
+      - ".github/**"
+      - ".pre-commit-config.yaml"
+      - "AGENTS.md"
+      - "data/**"
+      - "docs/**"
+      - "eslint.config.mjs"
+      - "infra/**"
+      - "linters/**"
+      - "Makefile"
+      - "package.json"
+      - "package-lock.json"
+      - "README.md"
+      - "scripts/**"
+      - "src/**"
+      - "tests/**"
+      - "tsconfig*.json"
+      - "vitest.config.ts"
+  workflow_dispatch:
+    inputs:
+      skip_cd:
+        description: Apenas CI (sem release)
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    name: CI - Commitlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Obter codigo fonte
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Commitlint matriz
+        uses: ./.github/actions/ci/validate-commitlint
+
+  typescript:
+    name: CI - TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Obter codigo fonte
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: TypeScript matriz
+        uses: ./.github/actions/ci/validate-typescript
+
+  docker:
+    name: CI - Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Obter codigo fonte
+        uses: actions/checkout@v4
+      - name: Docker matriz
+        uses: ./.github/actions/ci/validate-docker
+
+  github:
+    name: CI - GitHub
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Obter codigo fonte
+        uses: actions/checkout@v4
+      - name: GitHub matriz
+        uses: ./.github/actions/ci/validate-github
+
+  scripts:
+    name: CI - Scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Obter codigo fonte
+        uses: actions/checkout@v4
+      - name: Scripts matriz
+        uses: ./.github/actions/ci/validate-scripts
+
+  release:
+    name: CI - Release
+    needs: [commitlint, typescript, docker, github, scripts]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      !contains(github.event.head_commit.message, '[skip-cd]') &&
+      needs.commitlint.result == 'success' &&
+      needs.typescript.result == 'success' &&
+      needs.docker.result == 'success' &&
+      needs.github.result == 'success' &&
+      needs.scripts.result == 'success' &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.skip_cd != 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      issues: write
+    outputs:
+      tag: ${{ steps.after_tag.outputs.tag }}
+      published: ${{ steps.after_tag.outputs.published }}
+    steps:
+      - name: Obter codigo fonte
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Capturar tag anterior
+        id: before_tag
+        shell: bash
+        run: |
+          git fetch --tags --force
+          BEFORE="$(git describe --tags --abbrev=0 2>/dev/null || echo __none__)"
+          echo "tag=${BEFORE}" >> "$GITHUB_OUTPUT"
+      - name: Sincronizar tags
+        uses: ./.github/actions/ci/sync-tags
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Release semantica
+        uses: ./.github/actions/ci/release
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Capturar tag apos release
+        id: after_tag
+        shell: bash
+        run: |
+          git fetch origin main --tags --force
+          NEW="$(git describe --tags --abbrev=0 2>/dev/null || echo __none__)"
+          echo "tag=${NEW}" >> "$GITHUB_OUTPUT"
+          if [ "${{ steps.before_tag.outputs.tag }}" != "$NEW" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  pipeline-summary:
+    name: CI/CD - Resumo
+    needs: [commitlint, typescript, docker, github, scripts, release]
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Obter codigo fonte
+        uses: actions/checkout@v4
+      - name: Resumo do pipeline
+        uses: ./.github/actions/shared/pipeline-summary
+        with:
+          commitlint: ${{ needs.commitlint.result }}
+          typescript: ${{ needs.typescript.result }}
+          docker: ${{ needs.docker.result }}
+          github: ${{ needs.github.result }}
+          scripts: ${{ needs.scripts.result }}
+          release: ${{ needs.release.result }}
+          release_tag: ${{ needs.release.outputs.tag }}
+          release_published: ${{ needs.release.outputs.published }}

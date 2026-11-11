@@ -1,0 +1,24 @@
+services:
+  palmeiras-k6:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    image: palmeiras-k6-hml:local
+    container_name: palmeiras-k6-hml
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TARGET_ENV: ${TARGET_ENV:-hml_classic_elb}
+      SCALE_FACTOR: ${SCALE_FACTOR:-0.4}
+      RAMP_UP: ${RAMP_UP:-5s}
+      HOLD: ${HOLD:-15s}
+      RAMP_DOWN: ${RAMP_DOWN:-5s}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_ERRORS: ${LOG_ERRORS:-true}
+      LOG_ERROR_SAMPLE_RATE: ${LOG_ERROR_SAMPLE_RATE:-1}
+    volumes:
+      - ./reports:/app/reports
+    command:
+      - run
+      - src/presentation/scenarios/${SCENARIO:-smoke}.ts
