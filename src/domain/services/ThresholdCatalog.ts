@@ -39,6 +39,9 @@ const THRESHOLD_CATALOG: Record<ScenarioName, ThresholdMap> = {
   race_condition: {
     'checks{check:no_prod_redirect}': ['rate==1'],
   },
+  heavy_sync_probe: {
+    'checks{check:no_prod_redirect}': ['rate==1'],
+  },
 };
 
 export function getThresholdsForScenario(scenario: ScenarioName): ThresholdMap {

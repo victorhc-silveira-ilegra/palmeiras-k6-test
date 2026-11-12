@@ -132,6 +132,52 @@ export class RunTimeoutDiagnosticUseCase {
     return { primary, followUp, cleanControl };
   }
 
+  public probeHeavySynchronousAction(
+    path: string,
+    opts: TimeoutDiagnosticOptions,
+    vu = 0,
+    iter = 0
+  ): TransportResponse {
+    const cookieHeader = opts.authCookie.trim();
+    const headers: Record<string, string> = {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+    };
+    if (cookieHeader) {
+      headers.Cookie = cookieHeader;
+    }
+    const noncePart = opts.wpNonce.trim() ? `&_ajax_nonce=${encodeURIComponent(opts.wpNonce.trim())}` : '';
+    const body = `action=${encodeURIComponent(opts.ajaxAction)}${noncePart}&heavy_sync_probe=${this.clock.nowMs()}_${vu}_${iter}`;
+    const isPost = path.includes('admin-ajax.php') || path.includes('update.php');
+    if (isPost) {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+    }
+
+    const targetPath = isPost
+      ? path
+      : `${path}${path.includes('?') ? '&' : '?'}heavy_probe=${this.clock.nowMs()}_${vu}_${iter}`;
+
+    const res = this.client.execute({
+      method: isPost ? 'POST' : 'GET',
+      path: targetPath,
+      ...(isPost ? { body } : {}),
+      extraHeaders: headers,
+      tags: { type: 'heavy_sync_probe', route: 'heavy_sync_action' },
+      routeName: 'heavy_sync_action',
+      expectedStatuses: [200, 302, 400],
+      allowKnownHomologRedirect: true,
+    });
+
+    this.emitSlowTtfbIfExceeded(res, 'heavy_sync_action', vu, iter);
+
+    this.metrics.recordChecks(res, {
+      'Ação Pesada: completou sem 504 Gateway Timeout': () => res.status !== 504,
+      'Ação Pesada: conexão não foi abortada prematuramente': () => res.status !== 0,
+    });
+
+    return res;
+  }
+
   private emitSlowTtfbIfExceeded(
     res: TransportResponse,
     route: string,

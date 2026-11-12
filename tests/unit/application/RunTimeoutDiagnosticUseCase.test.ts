@@ -120,4 +120,102 @@ describe('RunTimeoutDiagnosticUseCase', () => {
     expect(metrics.post504SessionBlocks).toBe(1);
     expect(logger.events.some((e) => e.event === 'k6.session.lock_detected')).toBe(true);
   });
+
+  it('executa probeHeavySynchronousAction com POST e valida headers e checks', () => {
+    const env = TargetEnvironment.fromName('hml_ec2_direct');
+    const metrics = new SpyMetricsRecorder();
+    const logger = new InMemoryEventLogger();
+    const clock = new FixedClock();
+    const evaluator = new EvaluateResponseUseCase(metrics, logger);
+
+    const transport = new StubHttpTransport(() => ({
+      status: 200,
+      body: '{"success":true}',
+      headers: {},
+      durationMs: 70_000,
+    }));
+
+    const client = new HttpRouteClient(env, transport, metrics, evaluator);
+    const useCase = new RunTimeoutDiagnosticUseCase(env, client, clock, metrics, logger);
+
+    const res = useCase.probeHeavySynchronousAction(
+      '/wp-admin/admin-ajax.php',
+      {
+        authCookie: 'wp_test=123',
+        wpNonce: 'nonce456',
+        ajaxAction: 'heavy-update',
+        adminPath: '/wp-admin/',
+      },
+      1,
+      0
+    );
+
+    expect(res.status).toBe(200);
+    expect(transport.requests[0]?.method).toBe('POST');
+    expect(transport.requests[0]?.body).toContain('action=heavy-update');
+    expect(transport.requests[0]?.body).toContain('_ajax_nonce=nonce456');
+    expect(transport.requests[0]?.headers.Cookie).toBe('wp_test=123');
+    expect(logger.events.some((e) => e.event === 'k6.timeout.slow_ttfb')).toBe(true);
+  });
+
+  it('executa probeHeavySynchronousAction com GET para rota pesada sem body', () => {
+    const env = TargetEnvironment.fromName('azion_edge');
+    const metrics = new SpyMetricsRecorder();
+    const logger = new InMemoryEventLogger();
+    const clock = new FixedClock();
+    const evaluator = new EvaluateResponseUseCase(metrics, logger);
+
+    const transport = new StubHttpTransport(() => ({
+      status: 200,
+      body: 'HTML content',
+      headers: {},
+      durationMs: 1_200,
+    }));
+
+    const client = new HttpRouteClient(env, transport, metrics, evaluator);
+    const useCase = new RunTimeoutDiagnosticUseCase(env, client, clock, metrics, logger);
+
+    const res = useCase.probeHeavySynchronousAction('/wp-admin/plugins.php?page=heavy', {
+      authCookie: '',
+      wpNonce: '',
+      ajaxAction: '',
+      adminPath: '/wp-admin/',
+    });
+
+    expect(res.status).toBe(200);
+    expect(transport.requests[0]?.method).toBe('GET');
+    expect(transport.requests[0]?.url).toContain('heavy_probe=');
+    expect(transport.requests[0]?.body).toBeUndefined();
+  });
+
+  it('executa probeHeavySynchronousAction com rota sem query string e detecta falha 504/0', () => {
+    const env = TargetEnvironment.fromName('azion_edge');
+    const metrics = new SpyMetricsRecorder();
+    const logger = new InMemoryEventLogger();
+    const clock = new FixedClock();
+    const evaluator = new EvaluateResponseUseCase(metrics, logger);
+
+    const transport = new StubHttpTransport(() => ({
+      status: 504,
+      body: 'Gateway Timeout',
+      headers: {},
+      durationMs: 300_000,
+    }));
+
+    const client = new HttpRouteClient(env, transport, metrics, evaluator);
+    const useCase = new RunTimeoutDiagnosticUseCase(env, client, clock, metrics, logger);
+
+    const res = useCase.probeHeavySynchronousAction('/wp-admin/tools.php', {
+      authCookie: '',
+      wpNonce: '',
+      ajaxAction: '',
+      adminPath: '/wp-admin/',
+    });
+
+    expect(res.status).toBe(504);
+    expect(transport.requests[0]?.url).toContain('/wp-admin/tools.php?heavy_probe=');
+    const lastCheck = metrics.checksHistory[metrics.checksHistory.length - 1];
+    expect(lastCheck?.['Ação Pesada: completou sem 504 Gateway Timeout']).toBe(false);
+    expect(lastCheck?.['Ação Pesada: conexão não foi abortada prematuramente']).toBe(true);
+  });
 });

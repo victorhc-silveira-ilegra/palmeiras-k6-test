@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Consulta métricas do CloudWatch exclusivamente para recursos HML após um teste k6.
-# Uso: ./scripts/cloudwatch-summary.sh [minutos_atras]
+# Telemetria Integrada HML: CloudWatch, RDS Aurora, Load Balancers e EC2 interna (via SSM).
+# Uso: ./scripts/cloudwatch-summary.sh [minutos_atras] [--watch] [--interval N] [--legacy]
 MINUTES="${1:-15}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_COLLECTOR="${SCRIPT_DIR}/operations/hml_telemetry.py"
+
+if [[ "${1:-}" != "--legacy" && "${2:-}" != "--legacy" ]] && command -v python3 >/dev/null 2>&1 && [[ -f "$PYTHON_COLLECTOR" ]]; then
+  if [[ "${1:-}" == "--watch" || "${1:-}" == "-w" ]]; then
+    exec python3 "$PYTHON_COLLECTOR" "$@"
+  fi
+  exec python3 "$PYTHON_COLLECTOR" --minutes "$MINUTES" "$@"
+fi
+
+# Fallback para consulta bash basica caso python nao esteja disponivel
 REGION="${AWS_REGION:-us-east-1}"
 HML_INSTANCE_ID="i-02b29195a2fdaf1e7"
 HML_ALB_DIM="app/Hml-Site-Azion/ffb14ee37a74405d"
@@ -12,7 +23,7 @@ HML_ELB_NAME="dev-sep-hml"
 START=$(date -u -d "${MINUTES} minutes ago" +%Y-%m-%dT%H:%M:%SZ)
 END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-echo "=== CloudWatch HML (${START} -> ${END}) ==="
+echo "=== CloudWatch HML Basico (${START} -> ${END}) ==="
 
 echo "--- EC2 ${HML_INSTANCE_ID} CPUUtilization (Max/Avg) ---"
 aws cloudwatch get-metric-statistics --region "$REGION" \

@@ -11,7 +11,8 @@ export type ScenarioName =
   | 'spike'
   | 'soak'
   | 'cache_bypass'
-  | 'race_condition';
+  | 'race_condition'
+  | 'heavy_sync_probe';
 
 export type ThresholdMap = Record<string, string[]>;
 

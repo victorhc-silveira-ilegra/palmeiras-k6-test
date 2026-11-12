@@ -23,7 +23,9 @@ WP_AUTH_COOKIE ?=
 WP_NONCE ?=
 WP_AJAX_ACTION ?= heartbeat
 WP_ADMIN_PATH ?= /wp-admin/
+HEAVY_PATH ?=
 CW_MINUTES ?= 15
+WATCH_INTERVAL ?= 5
 
 GREEN  := \033[1;32m
 YELLOW := \033[1;33m
@@ -38,7 +40,7 @@ RESET  := \033[0m
 	app-validate validate app-build build app-ci ci all app-clean clean app-setup \
 	app-pre-commit hooks app-pre-commit-run hml-smoke smoke-hml hml-ec2-smoke \
 	hml-azion-smoke hml-ab-504 hml-session-lock hml-fanbase fanbase-hml \
-	hml-run hml-recon hml-cw hml-anti-prod docker-up docker-smoke docker-fanbase \
+	hml-run hml-recon hml-cw hml-monitor hml-watch hml-heavy-probe hml-anti-prod docker-up docker-smoke docker-fanbase \
 	docker-rebuild docker-down docker-clean docker-restart docker-ps docker-logs docker-sh
 
 help:
@@ -68,10 +70,13 @@ help:
 	@echo -e "  $(GREEN)hml-azion-smoke$(RESET)    - Smoke passando pela Azion Edge (hmlverdao.palmeiras.com.br)"
 	@echo -e "  $(GREEN)hml-ab-504$(RESET)         - Comparativo A/B (EC2 direto vs Azion Edge) + CloudWatch"
 	@echo -e "  $(GREEN)hml-session-lock$(RESET)   - Probe de trava de sessao pos-504 /wp-admin e admin-ajax"
+	@echo -e "  $(GREEN)hml-heavy-probe$(RESET)    - Emulacao de acao pesada sincrona (HEAVY_PATH=/wp-admin/...)"
 	@echo -e "  $(GREEN)hml-fanbase$(RESET)        - Simulacao de carga (BLOQUEADO sem ALLOW_FANBASE_LOAD=true)"
 	@echo -e "  $(GREEN)hml-run$(RESET)            - Executa cenario especifico em HML (SCENARIO=$(SCENARIO))"
 	@echo -e "  $(GREEN)hml-recon$(RESET)          - Inventario read-only AWS HML (scripts/recon-hml.sh)"
-	@echo -e "  $(GREEN)hml-cw$(RESET)             - Correlacao CloudWatch ultimos $(CW_MINUTES)m (CW_MINUTES=15)"
+	@echo -e "  $(GREEN)hml-cw$(RESET)             - Telemetria integrada HML (CW + SSM + RDS) ultimos $(CW_MINUTES)m"
+	@echo -e "  $(GREEN)hml-monitor$(RESET)        - Alias para telemetria profunda HML (CloudWatch, SSM EC2 e RDS)"
+	@echo -e "  $(GREEN)hml-watch$(RESET)          - Live Watch continuo da telemetria durante testes (WATCH_INTERVAL=5)"
 	@echo -e "  $(GREEN)hml-anti-prod$(RESET)      - Teste negativo: confirma bloqueio imediato de prod_alb"
 	@echo -e ""
 	@echo -e "$(YELLOW)Docker:$(RESET)"
@@ -147,6 +152,9 @@ hml-ab-504:
 hml-session-lock:
 	$(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/race_conditions.ts
 
+hml-heavy-probe:
+	$(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" -e HEAVY_PATH="$(HEAVY_PATH)" src/presentation/scenarios/heavy_sync_probe.ts
+
 hml-fanbase fanbase-hml:
 	@if [ "$(ALLOW_FANBASE_LOAD)" != "true" ]; then echo -e "$(RED)ABORTADO [PROTECAO]: fanbase_simul e teste de carga. Use ALLOW_FANBASE_LOAD=true explicitamente.$(RESET)"; exit 1; fi
 	TARGET_ENV=$(TARGET_ENV) $(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e ALLOW_FANBASE_LOAD=$(ALLOW_FANBASE_LOAD) -e RAMP_UP=$(RAMP_UP) -e HOLD=$(HOLD) -e RAMP_DOWN=$(RAMP_DOWN) -e SCALE_FACTOR=$(SCALE_FACTOR) src/presentation/scenarios/fanbase_simul.ts
@@ -159,6 +167,11 @@ hml-recon:
 
 hml-cw:
 	bash scripts/cloudwatch-summary.sh $(CW_MINUTES)
+
+hml-monitor: hml-cw
+
+hml-watch:
+	bash scripts/cloudwatch-summary.sh --watch --interval $(WATCH_INTERVAL)
 
 hml-anti-prod:
 	@OUT=$$($(K6_BIN) inspect -e TARGET_ENV=prod_alb src/presentation/scenarios/smoke.ts 2>&1 || true); \

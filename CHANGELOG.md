@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.2.0...v1.3.0) (2026-11-12)
+
+
+### Features
+
+* **telemetria:** adiciona observabilidade completa de HML com CloudWatch, RDS e SSM EC2
+
 # [1.2.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.1.0...v1.2.0) (2026-11-12)
 
 

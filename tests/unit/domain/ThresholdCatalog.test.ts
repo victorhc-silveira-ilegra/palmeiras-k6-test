@@ -13,6 +13,7 @@ describe('ThresholdCatalog', () => {
       'soak',
       'cache_bypass',
       'race_condition',
+      'heavy_sync_probe',
     ] as const;
 
     for (const scenario of scenarios) {

@@ -13,6 +13,7 @@ const SCENARIO_DISPLAY_TITLES: Record<string, string> = {
   spike: 'Rajada Curta de Reconexão e Lock (2 VUs)',
   soak: 'Monitoramento Contínuo de Estabilidade de Sessão',
   fanbase_simul: 'Simulação Calibrada da Torcida (Fanbase)',
+  heavy_sync_probe: 'Diagnóstico de Ação Pesada e Timeout Síncrono (HML)',
 };
 
 export function resolveExecutiveReportTitle(scenarioName: string, envName: string): string {
