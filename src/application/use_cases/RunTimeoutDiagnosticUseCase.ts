@@ -138,6 +138,46 @@ export class RunTimeoutDiagnosticUseCase {
     vu = 0,
     iter = 0
   ): TransportResponse {
+    const isSessionVictim = vu === 2;
+
+    if (isSessionVictim) {
+      const cookieHeader = opts.authCookie.trim();
+      const headers: Record<string, string> = {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      };
+      if (cookieHeader) {
+        headers.Cookie = cookieHeader;
+      }
+
+      const victimRes = this.client.execute({
+        method: 'GET',
+        path: `/wp-admin/admin-ajax.php?action=heartbeat&victim_probe=${this.clock.nowMs()}_${vu}_${iter}`,
+        extraHeaders: headers,
+        tags: { type: 'heavy_sync_probe', route: 'session_contention_victim' },
+        routeName: 'session_contention_victim',
+        expectedStatuses: [200, 400],
+      });
+
+      if (victimRes.status === 504 || victimRes.status === 0 || victimRes.durationMs >= 10_000) {
+        this.metrics.incrementPost504SessionBlocked();
+        this.logger.emit('WARN', 'k6.session.lock_detected', {
+          env: this.env.name,
+          role: 'session_victim',
+          status: victimRes.status,
+          duration_ms: Math.round(victimRes.durationMs),
+          vu,
+          iter,
+        });
+      }
+
+      this.metrics.recordChecks(victimRes, {
+        'Sessão Concorrente (VU 2): navegou sem bloqueio de sessão': () =>
+          victimRes.status !== 504 && victimRes.status !== 0,
+      });
+
+      return victimRes;
+    }
+
     const cookieHeader = opts.authCookie.trim();
     const headers: Record<string, string> = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -148,7 +188,10 @@ export class RunTimeoutDiagnosticUseCase {
     }
     const noncePart = opts.wpNonce.trim() ? `&_ajax_nonce=${encodeURIComponent(opts.wpNonce.trim())}` : '';
     const body = `action=${encodeURIComponent(opts.ajaxAction)}${noncePart}&heavy_sync_probe=${this.clock.nowMs()}_${vu}_${iter}`;
-    const isPost = path.includes('admin-ajax.php') || path.includes('update.php');
+    const isPost =
+      path.includes('admin-ajax.php') ||
+      path.includes('update.php') ||
+      path.includes('update-core.php');
     if (isPost) {
       headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
     }

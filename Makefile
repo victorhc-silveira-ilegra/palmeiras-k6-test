@@ -39,7 +39,7 @@ RESET  := \033[0m
 .PHONY: help app-install install app-lint lint app-security security app-test app-tests test \
 	app-validate validate app-build build app-ci ci all app-clean clean app-setup \
 	app-pre-commit hooks app-pre-commit-run hml-smoke smoke-hml hml-ec2-smoke \
-	hml-azion-smoke hml-ab-504 hml-session-lock hml-fanbase fanbase-hml \
+	hml-azion-smoke hml-ab-504 hml-4way-504 hml-session-lock hml-fanbase fanbase-hml \
 	hml-run hml-recon hml-cw hml-monitor hml-watch hml-heavy-probe hml-anti-prod docker-up docker-smoke docker-fanbase \
 	docker-rebuild docker-down docker-clean docker-restart docker-ps docker-logs docker-sh
 
@@ -69,6 +69,7 @@ help:
 	@echo -e "  $(GREEN)hml-ec2-smoke$(RESET)      - Smoke direto na EC2 HML (TARGET_URL=$(TARGET_URL))"
 	@echo -e "  $(GREEN)hml-azion-smoke$(RESET)    - Smoke passando pela Azion Edge (hmlverdao.palmeiras.com.br)"
 	@echo -e "  $(GREEN)hml-ab-504$(RESET)         - Comparativo A/B (EC2 direto vs Azion Edge) + CloudWatch"
+	@echo -e "  $(GREEN)hml-4way-504$(RESET)       - Comparativo 4-vias (ec2_direct, hml_alb, hml_classic_elb, azion_edge)"
 	@echo -e "  $(GREEN)hml-session-lock$(RESET)   - Probe de trava de sessao pos-504 /wp-admin e admin-ajax"
 	@echo -e "  $(GREEN)hml-heavy-probe$(RESET)    - Emulacao de acao pesada sincrona (HEAVY_PATH=/wp-admin/...)"
 	@echo -e "  $(GREEN)hml-fanbase$(RESET)        - Simulacao de carga (BLOQUEADO sem ALLOW_FANBASE_LOAD=true)"
@@ -148,6 +149,18 @@ hml-ab-504:
 	-$(K6_BIN) run -e TARGET_ENV=azion_edge -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/cache_bypass.ts
 	@echo -e "$(CYAN)[3/3] Coletando telemetria CloudWatch HML...$(RESET)"
 	bash scripts/cloudwatch-summary.sh $(CW_MINUTES)
+
+hml-4way-504:
+	@echo -e "$(CYAN)[1/5] Hop 1: Bypass Direto na EC2 (ec2_direct)...$(RESET)"
+	-$(K6_BIN) run -e TARGET_ENV=ec2_direct -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" -e HEAVY_PATH="$(HEAVY_PATH)" src/presentation/scenarios/heavy_sync_probe.ts
+	@echo -e "$(CYAN)[2/5] Hop 2: ALB Azion com idle_timeout=60s (hml_alb)...$(RESET)"
+	-$(K6_BIN) run -e TARGET_ENV=hml_alb -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" -e HEAVY_PATH="$(HEAVY_PATH)" src/presentation/scenarios/heavy_sync_probe.ts
+	@echo -e "$(CYAN)[3/5] Hop 3: Classic ELB com IdleTimeout=75s (hml_classic_elb)...$(RESET)"
+	-$(K6_BIN) run -e TARGET_ENV=hml_classic_elb -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" -e HEAVY_PATH="$(HEAVY_PATH)" src/presentation/scenarios/heavy_sync_probe.ts
+	@echo -e "$(CYAN)[4/5] Hop 4: Borda Azion Edge (azion_edge)...$(RESET)"
+	-$(K6_BIN) run -e TARGET_ENV=azion_edge -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" -e HEAVY_PATH="$(HEAVY_PATH)" src/presentation/scenarios/heavy_sync_probe.ts
+	@echo -e "$(CYAN)[5/5] Coleta de Telemetria Integrada HML...$(RESET)"
+	bash scripts/cloudwatch-summary.sh 5
 
 hml-session-lock:
 	$(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/race_conditions.ts

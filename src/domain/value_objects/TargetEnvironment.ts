@@ -21,14 +21,14 @@ const ENVIRONMENT_PRESETS: Record<EnvironmentName, TargetEnvironmentProps> = {
     baseUrl: 'https://dev-sep-hml-160178191.us-east-1.elb.amazonaws.com',
     hostHeader: 'hmlverdao.palmeiras.com.br',
     insecureSkipTLSVerify: true,
-    timeout: '15s',
+    timeout: '310s',
   },
   hml_alb: {
     name: 'hml_alb',
     baseUrl: 'http://Hml-Site-Azion-206016081.us-east-1.elb.amazonaws.com',
     hostHeader: 'hmlverdao.palmeiras.com.br',
     insecureSkipTLSVerify: false,
-    timeout: '10s',
+    timeout: '310s',
   },
   azion_edge: {
     name: 'azion_edge',
@@ -39,6 +39,13 @@ const ENVIRONMENT_PRESETS: Record<EnvironmentName, TargetEnvironmentProps> = {
   },
   hml_ec2_direct: {
     name: 'hml_ec2_direct',
+    baseUrl: 'http://52.202.111.170:80',
+    hostHeader: 'hmlverdao.palmeiras.com.br',
+    insecureSkipTLSVerify: true,
+    timeout: '310s',
+  },
+  ec2_direct: {
+    name: 'ec2_direct',
     baseUrl: 'http://52.202.111.170:80',
     hostHeader: 'hmlverdao.palmeiras.com.br',
     insecureSkipTLSVerify: true,

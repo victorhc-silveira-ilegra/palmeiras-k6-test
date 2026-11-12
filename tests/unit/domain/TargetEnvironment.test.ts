@@ -37,11 +37,11 @@ describe('TargetEnvironment', () => {
     expect(classic.baseUrl).toBe('https://dev-sep-hml-160178191.us-east-1.elb.amazonaws.com');
     expect(classic.hostHeader).toBe('hmlverdao.palmeiras.com.br');
     expect(classic.insecureSkipTLSVerify).toBe(true);
-    expect(classic.timeout).toBe('15s');
+    expect(classic.timeout).toBe('310s');
 
     const alb = TargetEnvironment.fromName('hml_alb');
     expect(alb.insecureSkipTLSVerify).toBe(false);
-    expect(alb.timeout).toBe('10s');
+    expect(alb.timeout).toBe('310s');
 
     const edge = TargetEnvironment.fromName('azion_edge');
     expect(edge.baseUrl).toBe('https://hmlverdao.palmeiras.com.br');
@@ -52,6 +52,11 @@ describe('TargetEnvironment', () => {
     expect(direct.hostHeader).toBe('hmlverdao.palmeiras.com.br');
     expect(direct.insecureSkipTLSVerify).toBe(true);
     expect(direct.timeout).toBe('310s');
+
+    const aliasDirect = TargetEnvironment.fromName('ec2_direct');
+    expect(aliasDirect.name).toBe('ec2_direct');
+    expect(aliasDirect.baseUrl).toBe('http://52.202.111.170:80');
+    expect(aliasDirect.timeout).toBe('310s');
 
     const directPrivate = TargetEnvironment.fromName(
       'hml_ec2_direct',

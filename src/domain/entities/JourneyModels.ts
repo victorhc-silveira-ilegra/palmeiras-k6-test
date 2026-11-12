@@ -1,4 +1,9 @@
-export type EnvironmentName = 'hml_classic_elb' | 'hml_alb' | 'azion_edge' | 'hml_ec2_direct';
+export type EnvironmentName =
+  | 'hml_classic_elb'
+  | 'hml_alb'
+  | 'azion_edge'
+  | 'hml_ec2_direct'
+  | 'ec2_direct';
 
 export type HttpMethod = 'GET' | 'HEAD' | 'OPTIONS' | 'POST';
 

@@ -1,3 +1,4 @@
+import { sleep } from 'k6';
 import { getThresholdsForScenario } from '../../domain/services/ThresholdCatalog.ts';
 import { createScenarioRuntime, createScenarioSummary } from './_k6Runtime.ts';
 
@@ -8,7 +9,7 @@ export const options = {
   scenarios: {
     teste_acao_pesada_sync: {
       executor: 'per-vu-iterations',
-      vus: 1,
+      vus: 2,
       iterations: 1,
       maxDuration: '360s',
     },
@@ -25,10 +26,18 @@ export function setup(): void {
 }
 
 export default function (): void {
+  if (__VU === 2) {
+    sleep(2);
+  }
+
+  const defaultAdmin = runtime.settings.wpAuthCookie.trim()
+    ? '/wp-admin/update-core.php'
+    : runtime.settings.wpAdminPath;
+
   const targetPath =
     __ENV.HEAVY_PATH && __ENV.HEAVY_PATH.trim()
       ? __ENV.HEAVY_PATH.trim()
-      : runtime.settings.wpAdminPath;
+      : defaultAdmin;
 
   runtime.timeoutDiagnostic.probeHeavySynchronousAction(
     targetPath,

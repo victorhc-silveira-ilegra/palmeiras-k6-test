@@ -10,15 +10,40 @@ import {
   StubHttpTransport,
 } from '../../helpers/FakeAdapters.ts';
 
+interface DiagnosticContext {
+  env: TargetEnvironment;
+  metrics: SpyMetricsRecorder;
+  logger: InMemoryEventLogger;
+  clock: FixedClock;
+  evaluator: EvaluateResponseUseCase;
+  transport: StubHttpTransport;
+  client: HttpRouteClient;
+  useCase: RunTimeoutDiagnosticUseCase;
+}
+
+const setupDiagnostic = (
+  envName: 'azion_edge' | 'hml_ec2_direct' | 'hml_alb' | 'hml_classic_elb' | 'ec2_direct',
+  handler: (req: { method: string; url: string; headers: Record<string, string>; body?: string }) => {
+    status: number;
+    body: string;
+    headers: Record<string, string>;
+    durationMs: number;
+  }
+): DiagnosticContext => {
+  const env = TargetEnvironment.fromName(envName);
+  const metrics = new SpyMetricsRecorder();
+  const logger = new InMemoryEventLogger();
+  const clock = new FixedClock();
+  const evaluator = new EvaluateResponseUseCase(metrics, logger);
+  const transport = new StubHttpTransport(handler);
+  const client = new HttpRouteClient(env, transport, metrics, evaluator);
+  const useCase = new RunTimeoutDiagnosticUseCase(env, client, clock, metrics, logger);
+  return { env, metrics, logger, clock, evaluator, transport, client, useCase };
+};
+
 describe('RunTimeoutDiagnosticUseCase', () => {
   it('executa wp-admin e admin-ajax autenticados e detecta slow_ttfb e session lock pos-504', () => {
-    const env = TargetEnvironment.fromName('hml_ec2_direct');
-    const metrics = new SpyMetricsRecorder();
-    const logger = new InMemoryEventLogger();
-    const clock = new FixedClock();
-    const evaluator = new EvaluateResponseUseCase(metrics, logger);
-
-    const transport = new StubHttpTransport((req) => {
+    const { metrics, logger, transport, useCase } = setupDiagnostic('hml_ec2_direct', (req) => {
       if (req.url.includes('/wp-admin/admin-ajax.php')) {
         return { status: 504, body: '504 Gateway Time-out', headers: {}, durationMs: 180_000 };
       }
@@ -30,9 +55,6 @@ describe('RunTimeoutDiagnosticUseCase', () => {
       }
       return { status: 200, body: '[]', headers: {}, durationMs: 150 };
     });
-
-    const client = new HttpRouteClient(env, transport, metrics, evaluator);
-    const useCase = new RunTimeoutDiagnosticUseCase(env, client, clock, metrics, logger);
 
     const result = useCase.probeSessionLockContention(
       {
@@ -58,21 +80,12 @@ describe('RunTimeoutDiagnosticUseCase', () => {
   });
 
   it('funciona sem cookie/nonce e detecta edge drop (status 0) sem falso positivo de lock', () => {
-    const env = TargetEnvironment.fromName('azion_edge');
-    const metrics = new SpyMetricsRecorder();
-    const logger = new InMemoryEventLogger();
-    const clock = new FixedClock();
-    const evaluator = new EvaluateResponseUseCase(metrics, logger);
-
-    const transport = new StubHttpTransport((req) => {
+    const { metrics, transport, useCase } = setupDiagnostic('azion_edge', (req) => {
       if (req.url.includes('/wp-admin/admin-ajax.php')) {
         return { status: 0, body: '', headers: {}, durationMs: 500 };
       }
       return { status: 200, body: '[]', headers: {}, durationMs: 100 };
     });
-
-    const client = new HttpRouteClient(env, transport, metrics, evaluator);
-    const useCase = new RunTimeoutDiagnosticUseCase(env, client, clock, metrics, logger);
 
     const result = useCase.probeSessionLockContention({
       authCookie: '',
@@ -90,13 +103,7 @@ describe('RunTimeoutDiagnosticUseCase', () => {
   });
 
   it('detecta lock por lentidao prolongada (>=60s) com degradacao no followup', () => {
-    const env = TargetEnvironment.fromName('hml_ec2_direct');
-    const metrics = new SpyMetricsRecorder();
-    const logger = new InMemoryEventLogger();
-    const clock = new FixedClock();
-    const evaluator = new EvaluateResponseUseCase(metrics, logger);
-
-    const transport = new StubHttpTransport((req) => {
+    const { metrics, logger, useCase } = setupDiagnostic('hml_ec2_direct', (req) => {
       if (req.url.includes('/wp-admin/admin-ajax.php')) {
         return { status: 200, body: 'ok', headers: {}, durationMs: 65_000 };
       }
@@ -105,9 +112,6 @@ describe('RunTimeoutDiagnosticUseCase', () => {
       }
       return { status: 200, body: '[]', headers: {}, durationMs: 100 };
     });
-
-    const client = new HttpRouteClient(env, transport, metrics, evaluator);
-    const useCase = new RunTimeoutDiagnosticUseCase(env, client, clock, metrics, logger);
 
     const result = useCase.probeSessionLockContention({
       authCookie: '',
@@ -122,21 +126,12 @@ describe('RunTimeoutDiagnosticUseCase', () => {
   });
 
   it('executa probeHeavySynchronousAction com POST e valida headers e checks', () => {
-    const env = TargetEnvironment.fromName('hml_ec2_direct');
-    const metrics = new SpyMetricsRecorder();
-    const logger = new InMemoryEventLogger();
-    const clock = new FixedClock();
-    const evaluator = new EvaluateResponseUseCase(metrics, logger);
-
-    const transport = new StubHttpTransport(() => ({
+    const { logger, transport, useCase } = setupDiagnostic('hml_ec2_direct', () => ({
       status: 200,
       body: '{"success":true}',
       headers: {},
       durationMs: 70_000,
     }));
-
-    const client = new HttpRouteClient(env, transport, metrics, evaluator);
-    const useCase = new RunTimeoutDiagnosticUseCase(env, client, clock, metrics, logger);
 
     const res = useCase.probeHeavySynchronousAction(
       '/wp-admin/admin-ajax.php',
@@ -159,21 +154,12 @@ describe('RunTimeoutDiagnosticUseCase', () => {
   });
 
   it('executa probeHeavySynchronousAction com GET para rota pesada sem body', () => {
-    const env = TargetEnvironment.fromName('azion_edge');
-    const metrics = new SpyMetricsRecorder();
-    const logger = new InMemoryEventLogger();
-    const clock = new FixedClock();
-    const evaluator = new EvaluateResponseUseCase(metrics, logger);
-
-    const transport = new StubHttpTransport(() => ({
+    const { transport, useCase } = setupDiagnostic('azion_edge', () => ({
       status: 200,
       body: 'HTML content',
       headers: {},
       durationMs: 1_200,
     }));
-
-    const client = new HttpRouteClient(env, transport, metrics, evaluator);
-    const useCase = new RunTimeoutDiagnosticUseCase(env, client, clock, metrics, logger);
 
     const res = useCase.probeHeavySynchronousAction('/wp-admin/plugins.php?page=heavy', {
       authCookie: '',
@@ -189,21 +175,12 @@ describe('RunTimeoutDiagnosticUseCase', () => {
   });
 
   it('executa probeHeavySynchronousAction com rota sem query string e detecta falha 504/0', () => {
-    const env = TargetEnvironment.fromName('azion_edge');
-    const metrics = new SpyMetricsRecorder();
-    const logger = new InMemoryEventLogger();
-    const clock = new FixedClock();
-    const evaluator = new EvaluateResponseUseCase(metrics, logger);
-
-    const transport = new StubHttpTransport(() => ({
+    const { metrics, transport, useCase } = setupDiagnostic('azion_edge', () => ({
       status: 504,
       body: 'Gateway Timeout',
       headers: {},
       durationMs: 300_000,
     }));
-
-    const client = new HttpRouteClient(env, transport, metrics, evaluator);
-    const useCase = new RunTimeoutDiagnosticUseCase(env, client, clock, metrics, logger);
 
     const res = useCase.probeHeavySynchronousAction('/wp-admin/tools.php', {
       authCookie: '',
@@ -217,5 +194,77 @@ describe('RunTimeoutDiagnosticUseCase', () => {
     const lastCheck = metrics.checksHistory[metrics.checksHistory.length - 1];
     expect(lastCheck?.['Ação Pesada: completou sem 504 Gateway Timeout']).toBe(false);
     expect(lastCheck?.['Ação Pesada: conexão não foi abortada prematuramente']).toBe(true);
+  });
+
+  it('executa probeHeavySynchronousAction para VU 2 vitima de concorrencia com bloqueio e sem bloqueio', () => {
+    let callCount = 0;
+    const { metrics, logger, useCase } = setupDiagnostic('azion_edge', () => {
+      callCount += 1;
+      return callCount === 1
+        ? { status: 504, body: 'Locked', headers: {}, durationMs: 15_000 }
+        : { status: 200, body: 'OK', headers: {}, durationMs: 200 };
+    });
+
+    const victimBlocked = useCase.probeHeavySynchronousAction(
+      '/wp-admin/update-core.php',
+      {
+        authCookie: 'wp_session_token=xyz',
+        wpNonce: '',
+        ajaxAction: 'heartbeat',
+        adminPath: '/wp-admin/',
+      },
+      2,
+      0
+    );
+
+    expect(victimBlocked.status).toBe(504);
+    expect(metrics.post504SessionBlocks).toBe(1);
+    expect(logger.events.some((e) => e.event === 'k6.session.lock_detected')).toBe(true);
+
+    const victimOk = useCase.probeHeavySynchronousAction(
+      '/wp-admin/update-core.php',
+      {
+        authCookie: '',
+        wpNonce: '',
+        ajaxAction: 'heartbeat',
+        adminPath: '/wp-admin/',
+      },
+      2,
+      1
+    );
+
+    expect(victimOk.status).toBe(200);
+    expect(metrics.post504SessionBlocks).toBe(1);
+  });
+
+  it('diferencia edge transport drop (status 0) de gateway timeout 504 para VU 1', () => {
+    let currentStatus = 0;
+    const { metrics, useCase } = setupDiagnostic('azion_edge', () => ({
+      status: currentStatus,
+      body: currentStatus === 0 ? '' : '504 Timeout',
+      headers: {},
+      durationMs: 500,
+    }));
+
+    const dropRes = useCase.probeHeavySynchronousAction(
+      '/wp-admin/update-core.php',
+      { authCookie: '', wpNonce: '', ajaxAction: '', adminPath: '/wp-admin/' },
+      1,
+      0
+    );
+    expect(dropRes.status).toBe(0);
+    expect(metrics.edgeTransportDrops).toBe(1);
+    expect(metrics.gatewayTimeouts504).toBe(0);
+
+    currentStatus = 504;
+    const timeoutRes = useCase.probeHeavySynchronousAction(
+      '/wp-admin/update-core.php',
+      { authCookie: '', wpNonce: '', ajaxAction: '', adminPath: '/wp-admin/' },
+      1,
+      1
+    );
+    expect(timeoutRes.status).toBe(504);
+    expect(metrics.edgeTransportDrops).toBe(1);
+    expect(metrics.gatewayTimeouts504).toBe(1);
   });
 });
