@@ -21,6 +21,12 @@ function resolveSemanticEventName(evaluation: SafetyEvaluationResult): string {
   if (evaluation.pointsToProd) {
     return 'k6.guardrail.prod_blocked';
   }
+  if (evaluation.isGatewayTimeout504) {
+    return 'k6.timeout.gateway_504';
+  }
+  if (evaluation.isEdgeTransportDrop) {
+    return 'k6.timeout.edge_drop';
+  }
   if (evaluation.rateLimited) {
     return 'k6.response.rate_limited';
   }
@@ -75,6 +81,13 @@ export class EvaluateResponseUseCase {
     if (evaluation.hasDeadlock) {
       this.metrics.incrementDeadlock();
     }
+    if (evaluation.isGatewayTimeout504) {
+      this.metrics.incrementGatewayTimeout504();
+    }
+    if (evaluation.isEdgeTransportDrop) {
+      this.metrics.incrementEdgeTransportDrop();
+    }
+    this.metrics.recordUpstreamTtfbDuration(cmd.response.durationMs);
 
     if (evaluation.shouldLogFailure) {
       this.logger.emit('WARN', resolveSemanticEventName(evaluation), {

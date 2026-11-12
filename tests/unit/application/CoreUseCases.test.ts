@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ForbiddenProductionTargetError } from '../../../src/domain/errors/DomainError.ts';
+import {
+  FanbaseLoadGuardError,
+  ForbiddenProductionTargetError,
+} from '../../../src/domain/errors/DomainError.ts';
 import { EvaluateResponseUseCase } from '../../../src/application/use_cases/EvaluateResponseUseCase.ts';
 import { ResolveEnvironmentUseCase } from '../../../src/application/use_cases/ResolveEnvironmentUseCase.ts';
 import { InMemoryEventLogger, SpyMetricsRecorder } from '../../helpers/FakeAdapters.ts';
@@ -64,12 +67,27 @@ describe('EvaluateResponseUseCase', () => {
     expect(logger.events[3]?.event).toBe('k6.response.transport_error');
     expect(logger.events[3]?.fields?.cache).toBe('5');
 
+    useCase.evaluateAndRecord({
+      response: { status: 504, body: 'Gateway Timeout', headers: {}, durationMs: 120_000 },
+      routeName: 'azion_504',
+    });
+    expect(metrics.gatewayTimeouts504).toBe(1);
+    expect(logger.events[4]?.event).toBe('k6.timeout.gateway_504');
+
+    useCase.evaluateAndRecord({
+      response: { status: 0, body: '', headers: {}, durationMs: 60_000 },
+      routeName: 'azion_drop',
+    });
+    expect(metrics.edgeTransportDrops).toBe(1);
+    expect(logger.events[5]?.event).toBe('k6.timeout.edge_drop');
+    expect(new FanbaseLoadGuardError().name).toBe('FanbaseLoadGuardError');
+
     const okResult = useCase.evaluateAndRecord({
       response: { status: 200, body: 'ok', headers: { 'X-Cache': 'HIT' }, durationMs: 10 },
       routeName: 'healthcheck',
     });
     expect(okResult.shouldLogFailure).toBe(false);
-    expect(logger.events).toHaveLength(4);
+    expect(logger.events).toHaveLength(6);
   });
 
   it('extrai WP JSON registrando warning leak e contagem de registros', () => {

@@ -37,6 +37,10 @@ export class SpyMetricsRecorder implements MetricsRecorderPort {
   public phpWarningLeaks = 0;
   public jsonRecords = 0;
   public known500Regressions = 0;
+  public gatewayTimeouts504 = 0;
+  public edgeTransportDrops = 0;
+  public post504SessionBlocks = 0;
+  public upstreamTtfbDurations: number[] = [];
   public checksHistory: Record<string, boolean>[] = [];
 
   public recordCacheHit(hit: boolean): void {
@@ -85,6 +89,22 @@ export class SpyMetricsRecorder implements MetricsRecorderPort {
 
   public incrementKnown500Regression(): void {
     this.known500Regressions += 1;
+  }
+
+  public incrementGatewayTimeout504(): void {
+    this.gatewayTimeouts504 += 1;
+  }
+
+  public incrementEdgeTransportDrop(): void {
+    this.edgeTransportDrops += 1;
+  }
+
+  public incrementPost504SessionBlocked(): void {
+    this.post504SessionBlocks += 1;
+  }
+
+  public recordUpstreamTtfbDuration(durationMs: number): void {
+    this.upstreamTtfbDurations.push(durationMs);
   }
 
   public recordChecks(_res: TransportResponse, checks: CheckEvaluatorMap): boolean {

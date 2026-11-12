@@ -15,5 +15,9 @@ export interface MetricsRecorderPort {
   incrementPhpWarningLeak(): void;
   incrementJsonRecordsProcessed(count: number): void;
   incrementKnown500Regression(): void;
+  incrementGatewayTimeout504(): void;
+  incrementEdgeTransportDrop(): void;
+  incrementPost504SessionBlocked(): void;
+  recordUpstreamTtfbDuration(durationMs: number): void;
   recordChecks(res: TransportResponse, checks: CheckEvaluatorMap): boolean;
 }

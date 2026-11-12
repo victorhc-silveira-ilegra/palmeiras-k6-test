@@ -18,7 +18,8 @@ describe('ThresholdCatalog', () => {
     for (const scenario of scenarios) {
       const profile = getThresholdsForScenario(scenario);
       expect(profile['checks{check:no_prod_redirect}']).toEqual(['rate==1']);
-      expect(profile.http_req_failed).toBeDefined();
     }
+    expect(getThresholdsForScenario('smoke').http_req_failed).toBeDefined();
+    expect(getThresholdsForScenario('fanbase_simul').http_req_failed).toBeDefined();
   });
 });

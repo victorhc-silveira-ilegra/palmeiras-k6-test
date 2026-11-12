@@ -27,6 +27,10 @@ describe('createRuntimeContainer', () => {
     phpWarningLeakCounter: noopMetric,
     jsonRecordsProcessedCounter: noopMetric,
     known500RegressionCounter: noopMetric,
+    gatewayTimeout504Counter: noopMetric,
+    edgeTransportDropCounter: noopMetric,
+    post504SessionBlockedCounter: noopMetric,
+    upstreamTtfbDuration: noopMetric,
     checkFn: (v, checks) => Object.values(checks).every((fn) => fn(v)),
   };
 

@@ -7,25 +7,11 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    rest_browsing: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: [
-        { duration: '30s', target: 8 },
-        { duration: '1m', target: 15 },
-        { duration: '30s', target: 0 },
-      ],
-      gracefulRampDown: '15s',
-      exec: 'browseFlow',
-    },
-    dynamic_searchers: {
-      executor: 'constant-arrival-rate',
-      rate: 4,
-      timeUnit: '1s',
-      duration: '2m',
-      preAllocatedVUs: 8,
-      maxVUs: 20,
-      exec: 'searchFlow',
+    timeout_boundary_probe: {
+      executor: 'per-vu-iterations',
+      vus: 1,
+      iterations: 3,
+      maxDuration: '360s',
     },
   },
   thresholds: getThresholdsForScenario('load'),
@@ -35,36 +21,28 @@ export function setup(): void {
   runtime.logger.emit('INFO', 'k6.cycle.started', {
     scenario: 'load',
     env: runtime.settings.environment.name,
+    base_url: runtime.settings.environment.baseUrl,
   });
 }
 
-export function browseFlow(): void {
+export default function (): void {
   const data = runtime.dataset.getHmlDataset();
-  const post = data.posts[Math.floor(Math.random() * data.posts.length)];
-  const r = Math.random();
+  const term = data.search_terms[__ITER % data.search_terms.length] ?? 'palmeiras';
 
-  if (r < 0.25) {
-    runtime.wpRoutes.checkHealth();
-  } else if (r < 0.5 && post) {
-    runtime.wpRoutes.fetchWpPosts(post.id);
-  } else if (r < 0.7) {
-    runtime.palmeirasApi.fetchClassificacao();
-  } else if (r < 0.85) {
-    runtime.palmeirasApi.fetchJogosMes();
-  } else {
-    runtime.wpRoutes.fetchWpPages();
-  }
+  runtime.wpRoutes.checkHealth();
+  runtime.wpRoutes.searchDynamic(term);
+  runtime.wpRoutes.searchWpRest(term, true, __VU, __ITER);
+  runtime.timeoutDiagnostic.probeAuthenticatedAdminAndAjax(
+    {
+      authCookie: runtime.settings.wpAuthCookie,
+      wpNonce: runtime.settings.wpNonce,
+      ajaxAction: runtime.settings.wpAjaxAction,
+      adminPath: runtime.settings.wpAdminPath,
+    },
+    __VU,
+    __ITER
+  );
   sleep(1);
-}
-
-export function searchFlow(): void {
-  const terms = runtime.dataset.getHmlDataset().search_terms;
-  const term = terms[Math.floor(Math.random() * terms.length)] ?? 'palmeiras';
-  if (Math.random() < 0.5) {
-    runtime.wpRoutes.searchWpRest(term);
-  } else {
-    runtime.palmeirasApi.searchNoticiasApi(term);
-  }
 }
 
 export const handleSummary = createScenarioSummary('load', runtime.settings.environment.name);

@@ -1,6 +1,6 @@
 import { LogLevel } from '../../application/ports/EventLoggerPort.ts';
 import { DomainInvariantError } from '../../domain/errors/DomainError.ts';
-import { TargetEnvironment } from '../../domain/value_objects/TargetEnvironment.ts';
+import { TargetEnvironment, assertNotProd } from '../../domain/value_objects/TargetEnvironment.ts';
 
 export type EnvRecord = Record<string, string | undefined>;
 
@@ -16,6 +16,11 @@ export interface RuntimeSettings {
   logErrors: boolean;
   logErrorSampleRate: number;
   scenarioName: string;
+  allowFanbaseLoad: boolean;
+  wpAuthCookie: string;
+  wpNonce: string;
+  wpAjaxAction: string;
+  wpAdminPath: string;
 }
 
 const ALLOWED_LOG_LEVELS: readonly LogLevel[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
@@ -46,7 +51,13 @@ function parseLogLevel(raw: string | undefined): LogLevel {
 
 export function loadSettings(envSource: EnvRecord): RuntimeSettings {
   const targetName = envSource.TARGET_ENV || 'hml_classic_elb';
-  const environment = TargetEnvironment.fromName(targetName);
+  const environment = TargetEnvironment.fromName(
+    targetName,
+    envSource.TARGET_URL,
+    envSource.REQUEST_TIMEOUT
+  );
+  const wpAdminPath = envSource.WP_ADMIN_PATH || '/wp-admin/';
+  assertNotProd(wpAdminPath, 'WP_ADMIN_PATH');
 
   return {
     environment,
@@ -54,11 +65,16 @@ export function loadSettings(envSource: EnvRecord): RuntimeSettings {
     rampUp: envSource.RAMP_UP || '20s',
     hold: envSource.HOLD || '40s',
     rampDown: envSource.RAMP_DOWN || '15s',
-    soakVus: parsePositiveNumber(envSource.SOAK_VUS, 8, 'SOAK_VUS'),
-    soakDuration: envSource.SOAK_DURATION || '10m',
+    soakVus: parsePositiveNumber(envSource.SOAK_VUS, 2, 'SOAK_VUS'),
+    soakDuration: envSource.SOAK_DURATION || '2m',
     logLevel: parseLogLevel(envSource.LOG_LEVEL),
     logErrors: (envSource.LOG_ERRORS || 'true') === 'true',
     logErrorSampleRate: parseSampleRate(envSource.LOG_ERROR_SAMPLE_RATE),
     scenarioName: envSource.SCENARIO_NAME || 'run',
+    allowFanbaseLoad: (envSource.ALLOW_FANBASE_LOAD || 'false').toLowerCase() === 'true',
+    wpAuthCookie: envSource.WP_AUTH_COOKIE || '',
+    wpNonce: envSource.WP_NONCE || '',
+    wpAjaxAction: envSource.WP_AJAX_ACTION || 'heartbeat',
+    wpAdminPath,
   };
 }

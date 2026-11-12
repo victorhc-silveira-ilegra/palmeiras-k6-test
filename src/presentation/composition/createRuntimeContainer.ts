@@ -5,6 +5,7 @@ import { EvaluateResponseUseCase } from '../../application/use_cases/EvaluateRes
 import { HttpRouteClient } from '../../application/use_cases/HttpRouteClient.ts';
 import { RunFanbaseJourneysUseCase } from '../../application/use_cases/RunFanbaseJourneysUseCase.ts';
 import { RunPalmeirasApiUseCase } from '../../application/use_cases/RunPalmeirasApiUseCase.ts';
+import { RunTimeoutDiagnosticUseCase } from '../../application/use_cases/RunTimeoutDiagnosticUseCase.ts';
 import { RunWordpressRoutesUseCase } from '../../application/use_cases/RunWordpressRoutesUseCase.ts';
 import { FanbaseModel, HmlDataset } from '../../domain/entities/JourneyModels.ts';
 import { FanbaseAllocation } from '../../domain/value_objects/FanbaseAllocation.ts';
@@ -35,6 +36,7 @@ export interface RuntimeContainer {
   palmeirasApi: RunPalmeirasApiUseCase;
   fanbaseJourneys: RunFanbaseJourneysUseCase;
   claimTicket: ClaimMatchTicketUseCase;
+  timeoutDiagnostic: RunTimeoutDiagnosticUseCase;
 }
 
 export function createRuntimeContainer(deps: CompositionDependencies): RuntimeContainer {
@@ -61,6 +63,13 @@ export function createRuntimeContainer(deps: CompositionDependencies): RuntimeCo
     metrics
   );
   const claimTicket = new ClaimMatchTicketUseCase(settings.environment, client, clock, metrics);
+  const timeoutDiagnostic = new RunTimeoutDiagnosticUseCase(
+    settings.environment,
+    client,
+    clock,
+    metrics,
+    logger
+  );
   const dataset = new K6DatasetAdapter(deps.loadDataset, deps.loadFanbaseModel);
 
   return {
@@ -72,5 +81,6 @@ export function createRuntimeContainer(deps: CompositionDependencies): RuntimeCo
     palmeirasApi,
     fanbaseJourneys,
     claimTicket,
+    timeoutDiagnostic,
   };
 }

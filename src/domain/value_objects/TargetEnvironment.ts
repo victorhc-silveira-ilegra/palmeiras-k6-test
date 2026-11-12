@@ -35,7 +35,14 @@ const ENVIRONMENT_PRESETS: Record<EnvironmentName, TargetEnvironmentProps> = {
     baseUrl: 'https://hmlverdao.palmeiras.com.br',
     hostHeader: 'hmlverdao.palmeiras.com.br',
     insecureSkipTLSVerify: false,
-    timeout: '15s',
+    timeout: '310s',
+  },
+  hml_ec2_direct: {
+    name: 'hml_ec2_direct',
+    baseUrl: 'http://52.202.111.170:80',
+    hostHeader: 'hmlverdao.palmeiras.com.br',
+    insecureSkipTLSVerify: true,
+    timeout: '310s',
   },
 };
 
@@ -73,7 +80,11 @@ export class TargetEnvironment {
     return new TargetEnvironment(props);
   }
 
-  public static fromName(targetName: string): TargetEnvironment {
+  public static fromName(
+    targetName: string,
+    targetUrlOverride?: string,
+    timeoutOverride?: string
+  ): TargetEnvironment {
     assertNotProd(targetName, 'TARGET_ENV');
     if (!Object.prototype.hasOwnProperty.call(ENVIRONMENT_PRESETS, targetName)) {
       const allowed = Object.keys(ENVIRONMENT_PRESETS).join(', ');
@@ -82,6 +93,18 @@ export class TargetEnvironment {
       );
     }
     const preset = ENVIRONMENT_PRESETS[targetName as EnvironmentName];
-    return TargetEnvironment.create(preset);
+    const resolvedUrl = targetUrlOverride?.trim() ? targetUrlOverride.trim() : preset.baseUrl;
+    if (targetUrlOverride?.trim()) {
+      assertNotProd(resolvedUrl, 'TARGET_URL');
+      if (!/^https?:\/\//i.test(resolvedUrl)) {
+        throw new DomainInvariantError(`TARGET_URL inválida "${resolvedUrl}". Use http:// ou https://.`);
+      }
+    }
+    const resolvedTimeout = timeoutOverride?.trim() ? timeoutOverride.trim() : preset.timeout;
+    return TargetEnvironment.create({
+      ...preset,
+      baseUrl: resolvedUrl.replace(/\/+$/, ''),
+      timeout: resolvedTimeout,
+    });
   }
 }

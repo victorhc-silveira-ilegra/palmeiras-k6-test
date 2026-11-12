@@ -113,6 +113,10 @@ describe('K6 Infrastructure Adapters Integration', () => {
       phpWarningLeakCounter: makeMetric('php_warning_leak_detected'),
       jsonRecordsProcessedCounter: makeMetric('json_records_processed'),
       known500RegressionCounter: makeMetric('known_hml_500_endpoints'),
+      gatewayTimeout504Counter: makeMetric('gateway_timeout_504'),
+      edgeTransportDropCounter: makeMetric('edge_transport_drop'),
+      post504SessionBlockedCounter: makeMetric('post_504_session_blocked'),
+      upstreamTtfbDuration: makeMetric('upstream_ttfb_ms'),
       checkFn: (val, checks) => Object.values(checks).every((fn) => fn(val)),
     };
 
@@ -130,6 +134,10 @@ describe('K6 Infrastructure Adapters Integration', () => {
     adapter.incrementPhpWarningLeak();
     adapter.incrementJsonRecordsProcessed(5);
     adapter.incrementKnown500Regression();
+    adapter.incrementGatewayTimeout504();
+    adapter.incrementEdgeTransportDrop();
+    adapter.incrementPost504SessionBlocked();
+    adapter.recordUpstreamTtfbDuration(1234);
     const checked = adapter.recordChecks(
       { status: 200, body: 'ok', headers: {}, durationMs: 10 },
       { status_ok: () => true }

@@ -1,4 +1,4 @@
-export type EnvironmentName = 'hml_classic_elb' | 'hml_alb' | 'azion_edge';
+export type EnvironmentName = 'hml_classic_elb' | 'hml_alb' | 'azion_edge' | 'hml_ec2_direct';
 
 export type HttpMethod = 'GET' | 'HEAD' | 'OPTIONS' | 'POST';
 
@@ -107,6 +107,8 @@ export interface SafetyEvaluationResult {
   rateLimited: boolean;
   hasPhpOrDbError: boolean;
   hasDeadlock: boolean;
+  isGatewayTimeout504: boolean;
+  isEdgeTransportDrop: boolean;
   serverErrorOrTransportFailure: boolean;
   cacheHit: boolean;
   shouldLogFailure: boolean;

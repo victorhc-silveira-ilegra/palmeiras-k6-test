@@ -13,3 +13,12 @@ export class ForbiddenProductionTargetError extends DomainInvariantError {
     this.name = 'ForbiddenProductionTargetError';
   }
 }
+
+export class FanbaseLoadGuardError extends DomainInvariantError {
+  public constructor() {
+    super(
+      'ABORTADO [PROTECAO]: fanbase_simul e um teste de carga bloqueado por padrao. Defina ALLOW_FANBASE_LOAD=true para executar explicitamente.'
+    );
+    this.name = 'FanbaseLoadGuardError';
+  }
+}

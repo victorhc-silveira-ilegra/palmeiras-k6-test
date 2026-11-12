@@ -6,11 +6,11 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    lock_contention: {
+    session_lock_contention: {
       executor: 'per-vu-iterations',
-      vus: 20,
+      vus: 2,
       iterations: 1,
-      maxDuration: '15s',
+      maxDuration: '360s',
     },
   },
   thresholds: getThresholdsForScenario('race_condition'),
@@ -20,13 +20,21 @@ export function setup(): void {
   runtime.logger.emit('INFO', 'k6.cycle.started', {
     scenario: 'race_conditions',
     env: runtime.settings.environment.name,
+    base_url: runtime.settings.environment.baseUrl,
   });
 }
 
 export default function (): void {
-  const singleSeatId = 'CADEIRA_GOL_NORTE_104';
-  const userId = `torcedor_${__VU}`;
-  runtime.claimTicket.execute(userId, 'FINAL_COPA_2026', singleSeatId);
+  runtime.timeoutDiagnostic.probeSessionLockContention(
+    {
+      authCookie: runtime.settings.wpAuthCookie,
+      wpNonce: runtime.settings.wpNonce,
+      ajaxAction: runtime.settings.wpAjaxAction,
+      adminPath: runtime.settings.wpAdminPath,
+    },
+    __VU,
+    __ITER
+  );
 }
 
 export const handleSummary = createScenarioSummary(

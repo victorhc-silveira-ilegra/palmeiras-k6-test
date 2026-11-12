@@ -11,11 +11,18 @@ K6_BIN := $(shell which k6 2>/dev/null || echo k6)
 ORCHESTRATOR := scripts/operations/clean_workspace.py
 
 TARGET_ENV ?= hml_classic_elb
+TARGET_URL ?=
+REQUEST_TIMEOUT ?=
 SCENARIO ?= smoke
 SCALE_FACTOR ?= 0.4
 RAMP_UP ?= 5s
 HOLD ?= 15s
 RAMP_DOWN ?= 5s
+ALLOW_FANBASE_LOAD ?= false
+WP_AUTH_COOKIE ?=
+WP_NONCE ?=
+WP_AJAX_ACTION ?= heartbeat
+WP_ADMIN_PATH ?= /wp-admin/
 CW_MINUTES ?= 15
 
 GREEN  := \033[1;32m
@@ -29,7 +36,8 @@ RESET  := \033[0m
 
 .PHONY: help app-install install app-lint lint app-security security app-test app-tests test \
 	app-validate validate app-build build app-ci ci all app-clean clean app-setup \
-	app-pre-commit hooks app-pre-commit-run hml-smoke smoke-hml hml-fanbase fanbase-hml \
+	app-pre-commit hooks app-pre-commit-run hml-smoke smoke-hml hml-ec2-smoke \
+	hml-azion-smoke hml-ab-504 hml-session-lock hml-fanbase fanbase-hml \
 	hml-run hml-recon hml-cw hml-anti-prod docker-up docker-smoke docker-fanbase \
 	docker-rebuild docker-down docker-clean docker-restart docker-ps docker-logs docker-sh
 
@@ -56,7 +64,11 @@ help:
 	@echo -e ""
 	@echo -e "$(YELLOW)HML k6 & AWS (Exclusivo HML):$(RESET)"
 	@echo -e "  $(GREEN)hml-smoke$(RESET)          - Executa smoke test HML em $(TARGET_ENV) (ou smoke-hml)"
-	@echo -e "  $(GREEN)hml-fanbase$(RESET)        - Simulacao simultanea da torcida em HML (SCALE_FACTOR=$(SCALE_FACTOR))"
+	@echo -e "  $(GREEN)hml-ec2-smoke$(RESET)      - Smoke direto na EC2 HML (TARGET_URL=$(TARGET_URL))"
+	@echo -e "  $(GREEN)hml-azion-smoke$(RESET)    - Smoke passando pela Azion Edge (hmlverdao.palmeiras.com.br)"
+	@echo -e "  $(GREEN)hml-ab-504$(RESET)         - Comparativo A/B (EC2 direto vs Azion Edge) + CloudWatch"
+	@echo -e "  $(GREEN)hml-session-lock$(RESET)   - Probe de trava de sessao pos-504 /wp-admin e admin-ajax"
+	@echo -e "  $(GREEN)hml-fanbase$(RESET)        - Simulacao de carga (BLOQUEADO sem ALLOW_FANBASE_LOAD=true)"
 	@echo -e "  $(GREEN)hml-run$(RESET)            - Executa cenario especifico em HML (SCENARIO=$(SCENARIO))"
 	@echo -e "  $(GREEN)hml-recon$(RESET)          - Inventario read-only AWS HML (scripts/recon-hml.sh)"
 	@echo -e "  $(GREEN)hml-cw$(RESET)             - Correlacao CloudWatch ultimos $(CW_MINUTES)m (CW_MINUTES=15)"
@@ -116,13 +128,31 @@ app-pre-commit-run:
 	$(PYTHON) -m pre_commit run --all-files -c .pre-commit-config.yaml
 
 hml-smoke smoke-hml:
-	TARGET_ENV=$(TARGET_ENV) $(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) src/presentation/scenarios/smoke.ts
+	TARGET_ENV=$(TARGET_ENV) $(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/smoke.ts
+
+hml-ec2-smoke:
+	$(K6_BIN) run -e TARGET_ENV=hml_ec2_direct -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/smoke.ts
+
+hml-azion-smoke:
+	$(K6_BIN) run -e TARGET_ENV=azion_edge -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/smoke.ts
+
+hml-ab-504:
+	@echo -e "$(CYAN)[1/3] Executando diagnostico direto na EC2 (hml_ec2_direct)...$(RESET)"
+	-$(K6_BIN) run -e TARGET_ENV=hml_ec2_direct -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/cache_bypass.ts
+	@echo -e "$(CYAN)[2/3] Executando diagnostico via Azion Edge (azion_edge)...$(RESET)"
+	-$(K6_BIN) run -e TARGET_ENV=azion_edge -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/cache_bypass.ts
+	@echo -e "$(CYAN)[3/3] Coletando telemetria CloudWatch HML...$(RESET)"
+	bash scripts/cloudwatch-summary.sh $(CW_MINUTES)
+
+hml-session-lock:
+	$(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/race_conditions.ts
 
 hml-fanbase fanbase-hml:
-	TARGET_ENV=$(TARGET_ENV) $(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e RAMP_UP=$(RAMP_UP) -e HOLD=$(HOLD) -e RAMP_DOWN=$(RAMP_DOWN) -e SCALE_FACTOR=$(SCALE_FACTOR) src/presentation/scenarios/fanbase_simul.ts
+	@if [ "$(ALLOW_FANBASE_LOAD)" != "true" ]; then echo -e "$(RED)ABORTADO [PROTECAO]: fanbase_simul e teste de carga. Use ALLOW_FANBASE_LOAD=true explicitamente.$(RESET)"; exit 1; fi
+	TARGET_ENV=$(TARGET_ENV) $(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e ALLOW_FANBASE_LOAD=$(ALLOW_FANBASE_LOAD) -e RAMP_UP=$(RAMP_UP) -e HOLD=$(HOLD) -e RAMP_DOWN=$(RAMP_DOWN) -e SCALE_FACTOR=$(SCALE_FACTOR) src/presentation/scenarios/fanbase_simul.ts
 
 hml-run:
-	TARGET_ENV=$(TARGET_ENV) $(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) src/presentation/scenarios/$(SCENARIO).ts
+	TARGET_ENV=$(TARGET_ENV) $(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/$(SCENARIO).ts
 
 hml-recon:
 	bash scripts/recon-hml.sh
@@ -144,8 +174,9 @@ docker-smoke:
 	TARGET_ENV=$(TARGET_ENV) $(DOCKER_COMPOSE) run --rm palmeiras-k6 run src/presentation/scenarios/smoke.ts
 
 docker-fanbase:
+	@if [ "$(ALLOW_FANBASE_LOAD)" != "true" ]; then echo -e "$(RED)ABORTADO [PROTECAO]: fanbase_simul e teste de carga. Use ALLOW_FANBASE_LOAD=true explicitamente.$(RESET)"; exit 1; fi
 	@test -f .env || cp .env.example .env
-	TARGET_ENV=$(TARGET_ENV) RAMP_UP=$(RAMP_UP) HOLD=$(HOLD) RAMP_DOWN=$(RAMP_DOWN) SCALE_FACTOR=$(SCALE_FACTOR) $(DOCKER_COMPOSE) run --rm palmeiras-k6 run src/presentation/scenarios/fanbase_simul.ts
+	TARGET_ENV=$(TARGET_ENV) ALLOW_FANBASE_LOAD=$(ALLOW_FANBASE_LOAD) RAMP_UP=$(RAMP_UP) HOLD=$(HOLD) RAMP_DOWN=$(RAMP_DOWN) SCALE_FACTOR=$(SCALE_FACTOR) $(DOCKER_COMPOSE) run --rm palmeiras-k6 run src/presentation/scenarios/fanbase_simul.ts
 
 docker-rebuild:
 	@test -f .env || cp .env.example .env

@@ -1,4 +1,5 @@
 import { sleep } from 'k6';
+import { FanbaseLoadGuardError } from '../../domain/errors/DomainError.ts';
 import { getThresholdsForScenario } from '../../domain/services/ThresholdCatalog.ts';
 import { createScenarioRuntime, createScenarioSummary } from './_k6Runtime.ts';
 
@@ -34,6 +35,9 @@ export const options = {
 };
 
 export function setup(): Record<string, unknown> {
+  if (!runtime.settings.allowFanbaseLoad) {
+    throw new FanbaseLoadGuardError();
+  }
   const model = runtime.dataset.getFanbaseModel();
   runtime.logger.emit('INFO', 'k6.cycle.started', {
     scenario: 'fanbase_simul',

@@ -32,6 +32,10 @@ const k6MetricBindings = {
   phpWarningLeakCounter: new Counter('php_warning_leak_detected'),
   jsonRecordsProcessedCounter: new Counter('json_records_processed'),
   known500RegressionCounter: new Counter('known_hml_500_endpoints'),
+  gatewayTimeout504Counter: new Counter('gateway_timeout_504'),
+  edgeTransportDropCounter: new Counter('edge_transport_drop'),
+  post504SessionBlockedCounter: new Counter('post_504_session_blocked'),
+  upstreamTtfbDuration: new Trend('upstream_ttfb_ms', true),
   checkFn: check,
 };
 

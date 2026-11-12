@@ -22,6 +22,10 @@ export interface K6MetricBindings {
   phpWarningLeakCounter: MetricSink;
   jsonRecordsProcessedCounter: MetricSink;
   known500RegressionCounter: MetricSink;
+  gatewayTimeout504Counter: MetricSink;
+  edgeTransportDropCounter: MetricSink;
+  post504SessionBlockedCounter: MetricSink;
+  upstreamTtfbDuration: MetricSink;
   checkFn: <T>(val: T, sets: Checkers<T>) => boolean;
 }
 
@@ -78,6 +82,22 @@ export class K6MetricsAdapter implements MetricsRecorderPort {
 
   public incrementKnown500Regression(): void {
     this.bindings.known500RegressionCounter.add(1);
+  }
+
+  public incrementGatewayTimeout504(): void {
+    this.bindings.gatewayTimeout504Counter.add(1);
+  }
+
+  public incrementEdgeTransportDrop(): void {
+    this.bindings.edgeTransportDropCounter.add(1);
+  }
+
+  public incrementPost504SessionBlocked(): void {
+    this.bindings.post504SessionBlockedCounter.add(1);
+  }
+
+  public recordUpstreamTtfbDuration(durationMs: number): void {
+    this.bindings.upstreamTtfbDuration.add(durationMs);
   }
 
   public recordChecks(res: TransportResponse, checks: CheckEvaluatorMap): boolean {

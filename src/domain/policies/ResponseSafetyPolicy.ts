@@ -95,6 +95,8 @@ export function evaluateResponseSafety(input: SafetyEvaluationInput): SafetyEval
   const rateLimited = input.status === 429;
   const hasPhpOrDbError = PHP_OR_DB_ERROR_RX.test(input.body);
   const hasDeadlock = hasPhpOrDbError && input.body.includes('Deadlock found');
+  const isGatewayTimeout504 = input.status === 504;
+  const isEdgeTransportDrop = input.status === 0;
   const serverErrorOrTransportFailure = input.status >= 500 || input.status === 0;
   const cacheHit = detectCacheHit(input.headers);
   const noProdRedirectPassed = input.allowKnownHomologRedirect || !pointsToProd;
@@ -117,6 +119,8 @@ export function evaluateResponseSafety(input: SafetyEvaluationInput): SafetyEval
     rateLimited,
     hasPhpOrDbError,
     hasDeadlock,
+    isGatewayTimeout504,
+    isEdgeTransportDrop,
     serverErrorOrTransportFailure,
     cacheHit,
     shouldLogFailure: failureReason !== '',

@@ -7,11 +7,11 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    hml_soak: {
+    session_stability_probe: {
       executor: 'constant-vus',
-      vus: runtime.settings.soakVus,
+      vus: Math.min(runtime.settings.soakVus, 2),
       duration: runtime.settings.soakDuration,
-      gracefulStop: '15s',
+      gracefulStop: '10s',
     },
   },
   thresholds: getThresholdsForScenario('soak'),
@@ -21,24 +21,27 @@ export function setup(): void {
   runtime.logger.emit('INFO', 'k6.cycle.started', {
     scenario: 'soak',
     env: runtime.settings.environment.name,
+    base_url: runtime.settings.environment.baseUrl,
   });
 }
 
 export default function (): void {
   const data = runtime.dataset.getHmlDataset();
   const post = data.posts[__ITER % data.posts.length];
-  const term = data.search_terms[__ITER % data.search_terms.length] ?? 'palmeiras';
 
   runtime.wpRoutes.checkHealth();
-  if (post) {
-    runtime.wpRoutes.fetchWpPosts(post.id);
-  }
-  runtime.palmeirasApi.fetchClassificacao();
-  if (__ITER % 3 === 0) {
-    runtime.palmeirasApi.fetchJogosMes();
-    runtime.wpRoutes.searchWpRest(term);
-  }
-  sleep(1.5);
+  runtime.wpRoutes.fetchWpPosts(post?.id ?? null, true, __VU, __ITER);
+  runtime.timeoutDiagnostic.probeAuthenticatedAdminAndAjax(
+    {
+      authCookie: runtime.settings.wpAuthCookie,
+      wpNonce: runtime.settings.wpNonce,
+      ajaxAction: runtime.settings.wpAjaxAction,
+      adminPath: runtime.settings.wpAdminPath,
+    },
+    __VU,
+    __ITER
+  );
+  sleep(2);
 }
 
 export const handleSummary = createScenarioSummary('soak', runtime.settings.environment.name);

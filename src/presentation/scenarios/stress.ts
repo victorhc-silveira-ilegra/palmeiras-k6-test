@@ -7,16 +7,11 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    stress_ramp: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: [
-        { duration: '1m', target: 10 },
-        { duration: '1m30s', target: 25 },
-        { duration: '1m30s', target: 40 },
-        { duration: '45s', target: 0 },
-      ],
-      gracefulRampDown: '20s',
+    edge_handshake_probe: {
+      executor: 'constant-vus',
+      vus: 2,
+      duration: '20s',
+      gracefulStop: '10s',
     },
   },
   thresholds: getThresholdsForScenario('stress'),
@@ -26,28 +21,26 @@ export function setup(): void {
   runtime.logger.emit('INFO', 'k6.cycle.started', {
     scenario: 'stress',
     env: runtime.settings.environment.name,
+    base_url: runtime.settings.environment.baseUrl,
   });
 }
 
 export default function (): void {
   const data = runtime.dataset.getHmlDataset();
-  const term = data.search_terms[Math.floor(Math.random() * data.search_terms.length)] ?? 'palmeiras';
-  const post = data.posts[Math.floor(Math.random() * data.posts.length)];
-  const rand = Math.random();
+  const term = data.search_terms[__ITER % data.search_terms.length] ?? 'palmeiras';
 
-  if (rand < 0.2) {
-    runtime.wpRoutes.checkHealth();
-  } else if (rand < 0.5 && post) {
-    runtime.wpRoutes.fetchWpPosts(post.id);
-  } else if (rand < 0.75) {
-    runtime.wpRoutes.searchWpRest(term);
-  } else if (rand < 0.9) {
-    runtime.palmeirasApi.searchNoticiasApi(term);
-  } else if (rand < 0.96) {
-    runtime.palmeirasApi.fetchEstatisticas();
-  } else {
-    runtime.wpRoutes.adminHeavyQuerySimulation();
-  }
+  runtime.wpRoutes.checkHealth();
+  runtime.wpRoutes.searchWpRest(term, true, __VU, __ITER);
+  runtime.timeoutDiagnostic.probeAuthenticatedAdminAndAjax(
+    {
+      authCookie: runtime.settings.wpAuthCookie,
+      wpNonce: runtime.settings.wpNonce,
+      ajaxAction: runtime.settings.wpAjaxAction,
+      adminPath: runtime.settings.wpAdminPath,
+    },
+    __VU,
+    __ITER
+  );
   sleep(0.5);
 }
 

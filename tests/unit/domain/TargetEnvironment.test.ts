@@ -45,6 +45,21 @@ describe('TargetEnvironment', () => {
 
     const edge = TargetEnvironment.fromName('azion_edge');
     expect(edge.baseUrl).toBe('https://hmlverdao.palmeiras.com.br');
+    expect(edge.timeout).toBe('310s');
+
+    const direct = TargetEnvironment.fromName('hml_ec2_direct');
+    expect(direct.baseUrl).toBe('http://52.202.111.170:80');
+    expect(direct.hostHeader).toBe('hmlverdao.palmeiras.com.br');
+    expect(direct.insecureSkipTLSVerify).toBe(true);
+    expect(direct.timeout).toBe('310s');
+
+    const directPrivate = TargetEnvironment.fromName(
+      'hml_ec2_direct',
+      'http://172.31.35.15:84/',
+      '360s'
+    );
+    expect(directPrivate.baseUrl).toBe('http://172.31.35.15:84');
+    expect(directPrivate.timeout).toBe('360s');
   });
 
   it('rejeita alvos de producao ou desconhecidos com fail-fast', () => {
