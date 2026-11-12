@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.1.0...v1.2.0) (2026-11-12)
+
+
+### Features
+
+* **relatorios:** traduz nomes de cenarios checks e relatorios para pt-br ([8ed7a01](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/8ed7a01b6268465153033b8e08477f9e05bdd259))
+
 # [1.1.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.0.0...v1.1.0) (2026-11-12)
 
 
