@@ -3,6 +3,14 @@
 
 ### Features
 
+* **diagnostico:** implementa reproducao completa do 504 com comparativo 4-vias e trava de sessao ([ada4c58](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/ada4c5816b0b75f5a923359c294634ccf3964af3))
+* **telemetria:** implementa observabilidade completa de HML com SSM, modo live watch e sonda sincrona ([6caff5b](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/6caff5b210988575cb84fe82dae7bd37d3907c05))
+
+# [1.3.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.2.0...v1.3.0) (2026-11-12)
+
+
+### Features
+
 * **telemetria:** adiciona observabilidade completa de HML com CloudWatch, RDS e SSM EC2
 
 # [1.2.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.1.0...v1.2.0) (2026-11-12)
