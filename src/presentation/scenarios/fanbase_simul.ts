@@ -24,12 +24,12 @@ function buildPersonaScenario(targetVus: number, exec: string): Record<string, u
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    fanbase_news_readers: buildPersonaScenario(allocation.newsReaders, 'newsReadersFlow'),
-    fanbase_matchday_live: buildPersonaScenario(allocation.matchdayLive, 'matchdayFlow'),
-    fanbase_searchers: buildPersonaScenario(allocation.searchers, 'searchFlow'),
-    fanbase_catalog_media: buildPersonaScenario(allocation.catalogMedia, 'catalogFlow'),
-    fanbase_mobile_app: buildPersonaScenario(allocation.mobileApp, 'mobileAppFlow'),
-    fanbase_protocol_matrix: buildPersonaScenario(allocation.protocolMatrix, 'protocolMatrixFlow'),
+    torcida_leitores_noticias: buildPersonaScenario(allocation.newsReaders, 'newsReadersFlow'),
+    torcida_dia_de_jogo_tabela: buildPersonaScenario(allocation.matchdayLive, 'matchdayFlow'),
+    torcida_buscas_dinamicas: buildPersonaScenario(allocation.searchers, 'searchFlow'),
+    torcida_catalogo_midia_lojas: buildPersonaScenario(allocation.catalogMedia, 'catalogFlow'),
+    torcida_app_mobile: buildPersonaScenario(allocation.mobileApp, 'mobileAppFlow'),
+    torcida_matriz_protocolos: buildPersonaScenario(allocation.protocolMatrix, 'protocolMatrixFlow'),
   },
   thresholds: getThresholdsForScenario('fanbase_simul'),
 };

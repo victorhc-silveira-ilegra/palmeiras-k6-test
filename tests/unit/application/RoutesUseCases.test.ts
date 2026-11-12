@@ -91,7 +91,9 @@ describe('RunWordpressRoutesUseCase, RunPalmeirasApiUseCase e ClaimMatchTicketUs
       durationMs: 10,
     }));
     wp.searchWpRest('invalido', false, 1, 0);
-    expect(metrics.checksHistory.at(-1)?.['wp search valid json array']).toBe(false);
+    expect(
+      metrics.checksHistory.at(-1)?.['Busca REST (/wp/v2/search): JSON válido (lista)']
+    ).toBe(false);
   });
 
   it('executa todas as rotas customizadas apiverdao/palmeiras/toApp incluindo sondas 401 e 500', () => {

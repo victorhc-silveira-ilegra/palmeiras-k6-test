@@ -7,7 +7,7 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    short_burst_handshake: {
+    rajada_curta_reconexao_2vus: {
       executor: 'per-vu-iterations',
       vus: 2,
       iterations: 2,

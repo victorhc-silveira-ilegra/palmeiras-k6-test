@@ -6,7 +6,7 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    session_lock_contention: {
+    teste_trava_sessao_pos_504: {
       executor: 'per-vu-iterations',
       vus: 2,
       iterations: 1,

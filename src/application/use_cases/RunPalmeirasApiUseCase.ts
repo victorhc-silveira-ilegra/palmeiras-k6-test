@@ -78,7 +78,7 @@ export class RunPalmeirasApiUseCase {
       expectedStatuses: [401],
     });
     this.metrics.recordChecks(res, {
-      'toApp requires auth (401)': () => res.status === 401,
+      'Segurança App (/toApp): exige autenticação (401)': () => res.status === 401,
     });
     return res;
   }
@@ -95,7 +95,7 @@ export class RunPalmeirasApiUseCase {
       this.metrics.incrementKnown500Regression();
     }
     this.metrics.recordChecks(res, {
-      'atendimento status 200 or tracked 500': () =>
+      'API Atendimento: HTTP 200 (ou 500 mapeado HML)': () =>
         allowKnown500 ? [200, 500].includes(res.status) : res.status === 200,
     });
     return res;
@@ -113,7 +113,7 @@ export class RunPalmeirasApiUseCase {
       this.metrics.incrementKnown500Regression();
     }
     this.metrics.recordChecks(res, {
-      'jogos_atualizar status 200 or tracked 500': () =>
+      'API Jogos Atualizar: HTTP 200 (ou 500 mapeado HML)': () =>
         allowKnown500 ? [200, 500].includes(res.status) : res.status === 200,
     });
     return res;
@@ -134,8 +134,8 @@ export class RunPalmeirasApiUseCase {
     });
     const parsed = this.client.parseJson<T>(res, routeTag);
     this.metrics.recordChecks(res, {
-      [`${routeTag} status 200`]: () => res.status === 200,
-      [`${routeTag} valid json`]: () => parsed !== null,
+      [`API ${routeTag}: HTTP 200`]: () => res.status === 200,
+      [`API ${routeTag}: JSON válido`]: () => parsed !== null,
     });
     return { res, data: parsed };
   }

@@ -7,7 +7,7 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    palmeiras_api_mix: {
+    varredura_apis_palmeiras_ttfb: {
       executor: 'per-vu-iterations',
       vus: 1,
       iterations: 10,

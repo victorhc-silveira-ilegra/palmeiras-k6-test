@@ -7,7 +7,7 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    smoke_execution: {
+    validacao_rapida_saude: {
       executor: 'constant-vus',
       vus: 2,
       duration: '20s',

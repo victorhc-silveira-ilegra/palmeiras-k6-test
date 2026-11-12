@@ -7,7 +7,7 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    edge_handshake_probe: {
+    diagnostico_handshake_azion: {
       executor: 'constant-vus',
       vus: 2,
       duration: '20s',

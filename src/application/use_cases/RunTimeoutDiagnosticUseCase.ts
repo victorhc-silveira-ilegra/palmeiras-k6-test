@@ -50,7 +50,8 @@ export class RunTimeoutDiagnosticUseCase {
       });
       this.emitSlowTtfbIfExceeded(adminRes, 'wp_admin_index', vu, iter);
       this.metrics.recordChecks(adminRes, {
-        'wp-admin responded without 504': () => adminRes.status !== 504 && adminRes.status !== 0,
+        'Painel Admin (/wp-admin): respondeu sem 504/queda': () =>
+          adminRes.status !== 504 && adminRes.status !== 0,
       });
     }
 
@@ -74,7 +75,8 @@ export class RunTimeoutDiagnosticUseCase {
     });
     this.emitSlowTtfbIfExceeded(ajaxRes, 'wp_admin_ajax', vu, iter);
     this.metrics.recordChecks(ajaxRes, {
-      'admin-ajax responded without 504/drop': () => ajaxRes.status !== 504 && ajaxRes.status !== 0,
+      'Admin AJAX (admin-ajax.php): respondeu sem 504/queda': () =>
+        ajaxRes.status !== 504 && ajaxRes.status !== 0,
     });
     return ajaxRes;
   }
@@ -123,7 +125,8 @@ export class RunTimeoutDiagnosticUseCase {
     }
 
     this.metrics.recordChecks(followUp, {
-      'session followup not blocked by 504': () => followUp.status !== 504 && followUp.status !== 0,
+      'Sessão pós-504: próxima requisição não travou': () =>
+        followUp.status !== 504 && followUp.status !== 0,
     });
 
     return { primary, followUp, cleanControl };

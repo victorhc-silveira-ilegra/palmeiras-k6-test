@@ -186,6 +186,20 @@ describe('K6 Infrastructure Adapters Integration', () => {
     expect(out[jsonKey]).toBe('{"metrics":{}}');
     expect(out.stdout).toBe('SUMMARY TEXT');
 
+    const customTitleHandler = createSummaryHandler(
+      'custom_cenario',
+      'hml_ec2_direct',
+      {
+        htmlReport: (_d, opts) => `<html>${opts?.title ?? ''}</html>`,
+        textSummary: () => 'CUSTOM',
+      },
+      () => new Date('2026-11-11T22:00:00.000Z')
+    );
+    const customOut = customTitleHandler({ metrics: {} });
+    const customHtmlKey =
+      'reports/summary-hml_ec2_direct-custom_cenario-2026-11-11T22-00-00-000Z.html';
+    expect(customOut[customHtmlKey]).toContain('custom_cenario');
+
     const defaultNowHandler = createSummaryHandler('smoke', 'hml_classic_elb', {
       htmlReport: () => '<html />',
       textSummary: () => 'TXT',

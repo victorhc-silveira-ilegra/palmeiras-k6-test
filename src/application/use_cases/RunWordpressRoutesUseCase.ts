@@ -29,8 +29,8 @@ export class RunWordpressRoutesUseCase {
       routeName: 'healthcheck',
     });
     this.metrics.recordChecks(res, {
-      'healthcheck status 200': () => res.status === 200,
-      'healthcheck body healthy': () => res.body.includes('healthy'),
+      'Saúde (/check.html): HTTP 200': () => res.status === 200,
+      'Saúde (/check.html): contém "healthy"': () => res.body.includes('healthy'),
     });
     return res;
   }
@@ -44,7 +44,7 @@ export class RunWordpressRoutesUseCase {
       recordCache: true,
     });
     this.metrics.recordChecks(res, {
-      'homepage status 200/302': () => [200, 302].includes(res.status),
+      'Página Inicial (/): HTTP 200 ou 302': () => [200, 302].includes(res.status),
     });
     return res;
   }
@@ -58,8 +58,8 @@ export class RunWordpressRoutesUseCase {
       durationMetric: 'dynamic',
     });
     this.metrics.recordChecks(res, {
-      'search status valid': () => [200, 302, 404].includes(res.status),
-      'not 504 gateway timeout': () => res.status !== 504,
+      'Busca Dinâmica HTML: HTTP 200/302/404': () => [200, 302, 404].includes(res.status),
+      'Busca Dinâmica HTML: sem erro 504 (Timeout)': () => res.status !== 504,
     });
     return res;
   }
@@ -75,8 +75,8 @@ export class RunWordpressRoutesUseCase {
     });
     const parsed = this.client.parseJson(res, 'wp_rest_search');
     this.metrics.recordChecks(res, {
-      'wp search status 200': () => res.status === 200,
-      'wp search valid json array': () => Array.isArray(parsed),
+      'Busca REST (/wp/v2/search): HTTP 200': () => res.status === 200,
+      'Busca REST (/wp/v2/search): JSON válido (lista)': () => Array.isArray(parsed),
     });
     return res;
   }
@@ -98,7 +98,7 @@ export class RunWordpressRoutesUseCase {
       durationMetric: 'wp_rest',
     });
     this.metrics.recordChecks(res, {
-      'wp posts status 200': () => res.status === 200,
+      'Notícias REST (/wp/v2/posts): HTTP 200': () => res.status === 200,
     });
     return res;
   }
@@ -112,7 +112,7 @@ export class RunWordpressRoutesUseCase {
       durationMetric: 'wp_rest',
     });
     this.metrics.recordChecks(res, {
-      'wp pages status 200': () => res.status === 200,
+      'Páginas REST (/wp/v2/pages): HTTP 200': () => res.status === 200,
     });
     return res;
   }
@@ -131,7 +131,7 @@ export class RunWordpressRoutesUseCase {
       expectedStatuses: [200, 302, 400],
     });
     this.metrics.recordChecks(res, {
-      'admin endpoint reachable (no 5xx)': () => ![500, 502, 503, 504].includes(res.status),
+      'Admin AJAX: acessível sem erro 5xx': () => ![500, 502, 503, 504].includes(res.status),
     });
     return res;
   }

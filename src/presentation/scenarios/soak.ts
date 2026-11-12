@@ -7,7 +7,7 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    session_stability_probe: {
+    estabilidade_continua_sessao: {
       executor: 'constant-vus',
       vus: Math.min(runtime.settings.soakVus, 2),
       duration: runtime.settings.soakDuration,
