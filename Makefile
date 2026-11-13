@@ -242,3 +242,7 @@ docker-sh:
 	@test -f .env || cp .env.example .env
 	@echo -e "$(CYAN)Abrindo /bin/sh em '$(or $(DOCKER_SERVICE),palmeiras-k6)'$(RESET)"
 	$(DOCKER_COMPOSE) exec $(or $(DOCKER_SERVICE),palmeiras-k6) /bin/sh || $(DOCKER_COMPOSE) run --rm --entrypoint /bin/sh $(or $(DOCKER_SERVICE),palmeiras-k6)
+
+.PHONY: hml-cw-multi-proxy
+hml-cw-multi-proxy:
+	bash scripts/cloudwatch-multi-proxy.sh $(CW_MINUTES)

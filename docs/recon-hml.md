@@ -36,3 +36,17 @@
    - `401 Unauthorized`: `/wp-json/toApp/v1/*` (APIs mobile autenticadas).
    - `500 Internal Server Error`: `/wp-json/palmeiras/v1/atendimento` e `/wp-json/apiverdao/v1/jogos-atualizar` (ausência de `FOOTSTATS_API` em HML).
    - Inexistentes neste stack: `/api/v1/ingressos/claim`, `grpc-hml.palmeiras.internal:50051`, `wss://ws-hml.palmeiras.internal/feed`.
+
+## Reconhecimento de 13/11/2026
+
+O ALB `teste-multi-proxy` foi localizado na conta de HML `000491796368`, em
+`us-east-1`. Seu target group `palmeiras-hml-https` usa porta 443 e health check
+HTTPS em `/check.html`. Os dois alvos do ASG `TESTE-WP` estavam saudáveis durante
+a consulta. A conversa também menciona a conta `113984763320` para um chamado
+distinto de health check, com HTTP na porta 80 em `/healthcheck.php`.
+
+Use `make hml-cw-multi-proxy CW_MINUTES=15` para consultar volume, latência do
+alvo, 504 emitidos pelo ALB e 5xx emitidos pelos alvos. O comando valida a
+conta com STS e resolve a dimensão CloudWatch pelo ARN do ALB. A relação
+entre a origem configurada na Azion e esse ALB precisa de confirmação pela
+equipe com acesso à configuração da borda.

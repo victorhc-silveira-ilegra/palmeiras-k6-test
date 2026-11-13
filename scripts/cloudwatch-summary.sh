@@ -11,6 +11,11 @@ if [[ "${1:-}" != "--legacy" && "${2:-}" != "--legacy" ]] && command -v python3 
   if [[ "${1:-}" == "--watch" || "${1:-}" == "-w" ]]; then
     exec python3 "$PYTHON_COLLECTOR" "$@"
   fi
+  if [[ $# -gt 0 && "$1" != -* ]]; then
+    shift
+  else
+    MINUTES=15
+  fi
   exec python3 "$PYTHON_COLLECTOR" --minutes "$MINUTES" "$@"
 fi
 
