@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.4.0...v1.5.0) (2026-11-13)
+
+
+### Features
+
+* **k6:** aprimora a validação de homologação pela Azion e pelo balanceador ([76bea0d](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/76bea0dd0ba674fe2c4f3e3c5a5e9a1b0062c2cd))
+
 # [1.4.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.3.0...v1.4.0) (2026-11-13)
 
 
