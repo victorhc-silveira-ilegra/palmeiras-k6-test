@@ -124,12 +124,9 @@ make app-ci             # Executa o pipeline completo dos 5 estágios com tabela
 make app-clean          # Remove dist/, coverage/ e __pycache__
 
 # Operações em HML (Proibido PROD)
-make hml-smoke          # Executa src/presentation/scenarios/smoke.ts em hml_classic_elb
-make hml-fanbase        # Executa fanbase_simul.ts calibrado (SCALE_FACTOR=0.4) em HML
-make hml-run SCENARIO=load  # Executa cenário específico em HML
-make hml-recon          # Inventário read-only de recursos AWS HML
-make hml-cw CW_MINUTES=15   # Correlação CloudWatch pós-teste
-make hml-anti-prod      # Confirma bloqueio imediato de TARGET_ENV=prod_alb
+make hml-azion-smoke    # Verifica o WordPress de HML pela Azion
+make hml-azion-fanbase ALLOW_FANBASE_LOAD=true SCALE_FACTOR=0.4 RAMP_UP=5s HOLD=15s RAMP_DOWN=5s
+make hml-cw-multi-proxy CW_MINUTES=15  # Consulta métricas do ALB teste-multi-proxy
 
 # Execução Conteinerizada (Docker Compose)
 make docker-up          # Inicializa serviço palmeiras-k6 em segundo plano

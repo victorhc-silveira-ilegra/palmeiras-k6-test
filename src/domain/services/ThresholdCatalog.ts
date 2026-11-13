@@ -2,6 +2,7 @@ import { ScenarioName, ThresholdMap } from '../entities/JourneyModels.ts';
 
 const THRESHOLD_CATALOG: Record<ScenarioName, ThresholdMap> = {
   smoke: {
+    iterations: ['count>=1'],
     http_req_failed: ['rate<0.01'],
     http_req_duration: ['p(95)<2000', 'p(99)<3500'],
     'http_req_duration{route:healthcheck}': ['p(95)<400'],

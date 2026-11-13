@@ -39,7 +39,7 @@ RESET  := \033[0m
 .PHONY: help app-install install app-lint lint app-security security app-test app-tests test \
 	app-validate validate app-build build app-ci ci all app-clean clean app-setup \
 	app-pre-commit hooks app-pre-commit-run hml-smoke smoke-hml hml-ec2-smoke \
-	hml-azion-smoke hml-ab-504 hml-4way-504 hml-session-lock hml-fanbase fanbase-hml \
+	hml-azion-smoke hml-multi-proxy-smoke hml-ab-504 hml-4way-504 hml-session-lock hml-fanbase fanbase-hml hml-azion-fanbase \
 	hml-run hml-recon hml-cw hml-monitor hml-watch hml-heavy-probe hml-anti-prod docker-up docker-smoke docker-fanbase \
 	docker-rebuild docker-down docker-clean docker-restart docker-ps docker-logs docker-sh
 
@@ -49,48 +49,51 @@ help:
 	@echo -e "$(BLUE)========================================================================$(RESET)"
 	@echo -e "Uso: $(CYAN)make <comando>$(RESET)"
 	@echo -e ""
-	@echo -e "$(YELLOW)Node:$(RESET) $(NODE_BIN) | $(YELLOW)Python:$(RESET) $(PYTHON) | $(YELLOW)k6:$(RESET) $(K6_BIN) | $(YELLOW)Alvo:$(RESET) $(TARGET_ENV)"
+	@echo -e "$(YELLOW)Node:$(RESET) $(NODE_BIN) | $(YELLOW)Python:$(RESET) $(PYTHON) | $(YELLOW)k6:$(RESET) $(K6_BIN)"
 	@echo -e ""
-	@echo -e "$(YELLOW)App & Quality Gate:$(RESET)"
-	@echo -e "  $(GREEN)app-lint$(RESET)           - Lint de tudo (TypeScript, Docker/Hadolint, GitHub/Actionlint, Scripts)"
-	@echo -e "  $(GREEN)app-security$(RESET)       - Seguranca de tudo (TS/npm, Docker/Trivy, GitHub/Gitleaks, Scripts)"
-	@echo -e "  $(GREEN)app-test$(RESET)           - Vitest 100% + k6 inspect + paridade CI/hooks (ou app-tests)"
-	@echo -e "  $(GREEN)app-validate$(RESET)       - Validate de tudo (TS/JSON, Compose, GitHub, Scripts/bash -n)"
-	@echo -e "  $(GREEN)app-build$(RESET)          - Build de tudo (tsc build, docker build --check, compileall)"
-	@echo -e "  $(GREEN)app-ci$(RESET)             - Executa pipeline CI/CD completo com resumo (ou ci / all)"
-	@echo -e "  $(GREEN)app-clean$(RESET)          - Limpa caches dist/, coverage/ e __pycache__"
-	@echo -e "  $(GREEN)app-install$(RESET)        - Instala dependencias Node (npm install)"
-	@echo -e "  $(GREEN)app-setup$(RESET)          - Bootstrap .env + npm install (+ pre-commit se houver git)"
-	@echo -e "  $(GREEN)app-pre-commit$(RESET)     - Instala hooks (matriz CI, fail-fast)"
-	@echo -e "  $(GREEN)app-pre-commit-run$(RESET) - Roda hooks em todos os arquivos"
+	@echo -e "$(YELLOW)Aplicação e qualidade$(RESET)"
+	@echo -e "    $(GREEN)app-install$(RESET)          - Instala as dependências Node.js (alias: install)"
+	@echo -e "    $(GREEN)app-setup$(RESET)            - Cria .env e o ambiente Python se faltarem, instala dependências Node.js e configura hooks Git"
+	@echo -e "    $(GREEN)app-pre-commit$(RESET)       - Instala os hooks Git de validação (alias: hooks)"
+	@echo -e "    $(GREEN)app-pre-commit-run$(RESET)   - Executa os hooks de pre-commit em todos os arquivos"
+	@echo -e "    $(GREEN)app-ci$(RESET)               - Executa as cinco etapas da matriz de qualidade e exibe o resumo (aliases: ci, all)"
+	@echo -e "    $(GREEN)app-lint$(RESET)             - Verifica tipagem, estilo e convenções em TypeScript, Docker, GitHub Actions e scripts (alias: lint)"
+	@echo -e "    $(GREEN)app-security$(RESET)         - Audita dependências, imagens e scripts e busca segredos no repositório (alias: security)"
+	@echo -e "    $(GREEN)app-test$(RESET)             - Executa Vitest com cobertura, inspeciona cenários k6 e verifica paridade entre CI e hooks (aliases: app-tests, test)"
+	@echo -e "    $(GREEN)app-validate$(RESET)         - Valida arquivos JSON e YAML, configuração do Compose e sintaxe dos scripts (alias: validate)"
+	@echo -e "    $(GREEN)app-build$(RESET)            - Verifica a compilação TypeScript e Python e a configuração de build Docker (alias: build)"
+	@echo -e "    $(GREEN)app-clean$(RESET)            - Remove artefatos de compilação, relatórios de cobertura e caches Python (alias: clean)"
 	@echo -e ""
-	@echo -e "$(YELLOW)HML k6 & AWS (Exclusivo HML):$(RESET)"
-	@echo -e "  $(GREEN)hml-smoke$(RESET)          - Executa smoke test HML em $(TARGET_ENV) (ou smoke-hml)"
-	@echo -e "  $(GREEN)hml-ec2-smoke$(RESET)      - Smoke direto na EC2 HML (TARGET_URL=$(TARGET_URL))"
-	@echo -e "  $(GREEN)hml-azion-smoke$(RESET)    - Smoke passando pela Azion Edge (hmlverdao.palmeiras.com.br)"
-	@echo -e "  $(GREEN)hml-ab-504$(RESET)         - Comparativo A/B (EC2 direto vs Azion Edge) + CloudWatch"
-	@echo -e "  $(GREEN)hml-4way-504$(RESET)       - Comparativo 4-vias (ec2_direct, hml_alb, hml_classic_elb, azion_edge)"
-	@echo -e "  $(GREEN)hml-session-lock$(RESET)   - Probe de trava de sessao pos-504 /wp-admin e admin-ajax"
-	@echo -e "  $(GREEN)hml-heavy-probe$(RESET)    - Emulacao de acao pesada sincrona (HEAVY_PATH=/wp-admin/...)"
-	@echo -e "  $(GREEN)hml-fanbase$(RESET)        - Simulacao de carga (BLOQUEADO sem ALLOW_FANBASE_LOAD=true)"
-	@echo -e "  $(GREEN)hml-run$(RESET)            - Executa cenario especifico em HML (SCENARIO=$(SCENARIO))"
-	@echo -e "  $(GREEN)hml-recon$(RESET)          - Inventario read-only AWS HML (scripts/recon-hml.sh)"
-	@echo -e "  $(GREEN)hml-cw$(RESET)             - Telemetria integrada HML (CW + SSM + RDS) ultimos $(CW_MINUTES)m"
-	@echo -e "  $(GREEN)hml-monitor$(RESET)        - Alias para telemetria profunda HML (CloudWatch, SSM EC2 e RDS)"
-	@echo -e "  $(GREEN)hml-watch$(RESET)          - Live Watch continuo da telemetria durante testes (WATCH_INTERVAL=5)"
-	@echo -e "  $(GREEN)hml-anti-prod$(RESET)      - Teste negativo: confirma bloqueio imediato de prod_alb"
+	@echo -e "$(YELLOW)Homologação (k6 e AWS)$(RESET)"
+	@echo -e "    $(GREEN)hml-azion-smoke$(RESET)      - Executa a verificação básica do WordPress de HML pela Azion (REQUEST_TIMEOUT padrão de 3s)"
+	@echo -e "    $(GREEN)hml-multi-proxy-smoke$(RESET) - Executa o mesmo smoke direto no ALB atual, com TLS validado"
+	@echo -e "    $(GREEN)hml-azion-fanbase$(RESET)    - Simula a torcida pela Azion com escala, rampa e autorização de carga explícitas"
+	@echo -e "    $(GREEN)hml-run$(RESET)              - Executa o cenário definido em SCENARIO no alvo indicado por TARGET_ENV"
+	@echo -e "    $(GREEN)hml-smoke$(RESET)            - Executa a verificação básica no alvo indicado por TARGET_ENV (REQUEST_TIMEOUT padrão de 3s, alias: smoke-hml)"
+	@echo -e "    $(GREEN)hml-ec2-smoke$(RESET)        - Executa a verificação básica diretamente na EC2 de HML indicada por TARGET_URL"
+	@echo -e "    $(GREEN)hml-fanbase$(RESET)          - Simula a torcida no alvo selecionado com ALLOW_FANBASE_LOAD=true (alias: fanbase-hml)"
+	@echo -e "    $(GREEN)hml-cw-multi-proxy$(RESET)   - Consulta volume, latência e erros do ALB teste-multi-proxy (CW_MINUTES=$(CW_MINUTES))"
+	@echo -e "    $(GREEN)hml-recon$(RESET)            - Consulta o inventário AWS da topologia original de HML"
+	@echo -e "    $(GREEN)hml-cw$(RESET)               - Coleta métricas e logs da topologia original via CloudWatch e SSM (CW_MINUTES=$(CW_MINUTES), alias: hml-monitor)"
+	@echo -e "    $(GREEN)hml-watch$(RESET)            - Acompanha ao vivo a telemetria da topologia original (WATCH_INTERVAL=$(WATCH_INTERVAL)s)"
+	@echo -e "    $(GREEN)hml-ab-504$(RESET)           - Compara respostas e latência entre a EC2 direta e a Azion e coleta métricas do CloudWatch"
+	@echo -e "    $(GREEN)hml-4way-504$(RESET)         - Compara timeouts via EC2, ALB original, Classic ELB e Azion"
+	@echo -e "    $(GREEN)hml-session-lock$(RESET)     - Compara a resposta da mesma sessão após timeout com a de um controle sem cookie"
+	@echo -e "    $(GREEN)hml-heavy-probe$(RESET)      - Mede a resposta de uma ação síncrona do WordPress indicada por HEAVY_PATH"
+	@echo -e "    $(GREEN)hml-anti-prod$(RESET)        - Confirma com k6 inspect que a configuração rejeita um alvo de produção"
 	@echo -e ""
-	@echo -e "$(YELLOW)Docker:$(RESET)"
-	@echo -e "  $(GREEN)docker-up$(RESET)          - Sobe o servico k6 em container (SCENARIO=$(SCENARIO))"
-	@echo -e "  $(GREEN)docker-smoke$(RESET)       - Executa smoke.ts em HML dentro do container (--rm)"
-	@echo -e "  $(GREEN)docker-fanbase$(RESET)     - Executa fanbase_simul.ts em HML no container preservando reports/"
-	@echo -e "  $(GREEN)docker-rebuild$(RESET)     - Rebuild da imagem (--pull) e recria o container"
-	@echo -e "  $(GREEN)docker-down$(RESET)        - Para o container preservando reports/"
-	@echo -e "  $(GREEN)docker-clean$(RESET)       - $(RED)DESTRUTIVO$(RESET): remove containers, redes e imagem local"
-	@echo -e "  $(GREEN)docker-restart$(RESET)     - Restart do servico palmeiras-k6"
-	@echo -e "  $(GREEN)docker-ps$(RESET)          - Status dos containers"
-	@echo -e "  $(GREEN)docker-logs$(RESET)        - Segue INFO (F=0 uma vez; LEVEL=all todos; T=1; P=1)"
-	@echo -e "  $(GREEN)docker-sh$(RESET)          - Shell /bin/sh no container palmeiras-k6"
+	@echo -e "$(YELLOW)Docker$(RESET)"
+	@echo -e "    $(GREEN)docker-up$(RESET)            - Inicia o serviço k6 em segundo plano com o cenário selecionado (SCENARIO=$(SCENARIO))"
+	@echo -e "    $(GREEN)docker-rebuild$(RESET)       - Reconstrói a imagem com atualização da base e recria o serviço"
+	@echo -e "    $(GREEN)docker-restart$(RESET)       - Reinicia o serviço palmeiras-k6"
+	@echo -e "    $(GREEN)docker-down$(RESET)          - Encerra o serviço e mantém os relatórios em reports/"
+	@echo -e "    $(GREEN)docker-smoke$(RESET)         - Executa o smoke de HML em um contêiner descartável"
+	@echo -e "    $(GREEN)docker-fanbase$(RESET)       - Simula a torcida em contêiner e grava os relatórios em reports/"
+	@echo -e "    $(GREEN)docker-ps$(RESET)            - Exibe o estado dos contêineres do projeto"
+	@echo -e "    $(GREEN)docker-logs$(RESET)          - Acompanha logs INFO (LEVEL=all para todos os níveis, F=0 para consulta única)"
+	@echo -e "    $(GREEN)docker-sh$(RESET)            - Abre um shell no serviço k6 ou inicia um contêiner temporário"
+	@echo -e "    $(GREEN)docker-clean$(RESET)         - $(RED)DESTRUTIVO$(RESET) — remove contêineres, redes e a imagem local"
+	@echo -e ""
 	@echo -e "$(BLUE)========================================================================$(RESET)"
 
 app-install install:
@@ -134,13 +137,23 @@ app-pre-commit-run:
 	$(PYTHON) -m pre_commit run --all-files -c .pre-commit-config.yaml
 
 hml-smoke smoke-hml:
-	TARGET_ENV=$(TARGET_ENV) $(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/smoke.ts
+	TARGET_ENV=$(TARGET_ENV) $(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(or $(strip $(REQUEST_TIMEOUT)),3s)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/smoke.ts
 
 hml-ec2-smoke:
 	$(K6_BIN) run -e TARGET_ENV=hml_ec2_direct -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/smoke.ts
 
 hml-azion-smoke:
-	$(K6_BIN) run -e TARGET_ENV=azion_edge -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/smoke.ts
+	$(K6_BIN) run -e TARGET_ENV=azion_edge -e TARGET_URL= -e SMOKE_MULTI_PROXY_IP= -e REQUEST_TIMEOUT="$(or $(strip $(REQUEST_TIMEOUT)),3s)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" src/presentation/scenarios/smoke.ts
+
+hml-multi-proxy-smoke:
+	@set -euo pipefail; \
+	account=$$(aws sts get-caller-identity --region us-east-1 --query Account --output text --no-cli-pager); \
+	if [[ "$$account" != 000491796368 ]]; then echo "Conta AWS diferente da conta de HML." >&2; exit 1; fi; \
+	dns=$$(aws elbv2 describe-load-balancers --region us-east-1 --names teste-multi-proxy --query 'LoadBalancers[0].DNSName' --output text --no-cli-pager); \
+	if [[ "$$dns" != teste-multi-proxy-*.us-east-1.elb.amazonaws.com ]]; then echo "DNS inesperado para o ALB de HML." >&2; exit 1; fi; \
+	ip=$$(getent ahostsv4 "$$dns" | awk 'NR == 1 {print $$1}'); \
+	if [[ -z "$$ip" ]]; then echo "ALB de HML sem IPv4 resolvido." >&2; exit 1; fi; \
+	$(K6_BIN) run -e TARGET_ENV=azion_edge -e TARGET_URL= -e SMOKE_MULTI_PROXY_IP="$$ip" -e REQUEST_TIMEOUT="$(or $(strip $(REQUEST_TIMEOUT)),3s)" src/presentation/scenarios/smoke.ts
 
 hml-ab-504:
 	@echo -e "$(CYAN)[1/3] Executando diagnostico direto na EC2 (hml_ec2_direct)...$(RESET)"
@@ -167,6 +180,11 @@ hml-session-lock:
 
 hml-heavy-probe:
 	$(K6_BIN) run -e TARGET_ENV=$(TARGET_ENV) -e TARGET_URL="$(TARGET_URL)" -e REQUEST_TIMEOUT="$(REQUEST_TIMEOUT)" -e WP_AUTH_COOKIE="$(WP_AUTH_COOKIE)" -e WP_NONCE="$(WP_NONCE)" -e WP_AJAX_ACTION="$(WP_AJAX_ACTION)" -e WP_ADMIN_PATH="$(WP_ADMIN_PATH)" -e HEAVY_PATH="$(HEAVY_PATH)" src/presentation/scenarios/heavy_sync_probe.ts
+
+hml-azion-fanbase:
+	$(foreach param,SCALE_FACTOR RAMP_UP HOLD RAMP_DOWN,$(if $(and $(filter command line environment,$(origin $(param))),$(strip $($(param)))),,$(error Informe $(param) explicitamente para hml-azion-fanbase)))
+	$(if $(filter true,$(ALLOW_FANBASE_LOAD)),,$(error Use ALLOW_FANBASE_LOAD=true para hml-azion-fanbase))
+	$(MAKE) hml-fanbase TARGET_ENV=azion_edge TARGET_URL=
 
 hml-fanbase fanbase-hml:
 	@if [ "$(ALLOW_FANBASE_LOAD)" != "true" ]; then echo -e "$(RED)ABORTADO [PROTECAO]: fanbase_simul e teste de carga. Use ALLOW_FANBASE_LOAD=true explicitamente.$(RESET)"; exit 1; fi

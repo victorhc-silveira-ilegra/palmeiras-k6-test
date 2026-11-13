@@ -3,9 +3,16 @@ import { getThresholdsForScenario } from '../../domain/services/ThresholdCatalog
 import { createScenarioRuntime, createScenarioSummary } from './_k6Runtime.ts';
 
 const runtime = createScenarioRuntime();
+const multiProxyIp = __ENV.SMOKE_MULTI_PROXY_IP;
+const directMultiProxy =
+  runtime.settings.environment.baseUrl === 'https://hmlverdao.palmeiras.com.br' &&
+  runtime.settings.environment.name === 'azion_edge' &&
+  Boolean(multiProxyIp);
+const route = directMultiProxy ? 'hml_multi_proxy' : runtime.settings.environment.name;
 
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
+  hosts: directMultiProxy ? { 'hmlverdao.palmeiras.com.br': multiProxyIp } : {},
   scenarios: {
     validacao_rapida_saude: {
       executor: 'constant-vus',
@@ -20,7 +27,7 @@ export const options = {
 export function setup(): void {
   runtime.logger.emit('INFO', 'k6.cycle.started', {
     scenario: 'smoke',
-    env: runtime.settings.environment.name,
+    env: route,
   });
 }
 
@@ -42,4 +49,4 @@ export default function (): void {
   sleep(1);
 }
 
-export const handleSummary = createScenarioSummary('smoke', runtime.settings.environment.name);
+export const handleSummary = createScenarioSummary('smoke', route);

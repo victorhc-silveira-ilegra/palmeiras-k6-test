@@ -21,6 +21,7 @@ describe('ThresholdCatalog', () => {
       expect(profile['checks{check:no_prod_redirect}']).toEqual(['rate==1']);
     }
     expect(getThresholdsForScenario('smoke').http_req_failed).toBeDefined();
+    expect(getThresholdsForScenario('smoke').iterations).toEqual(['count>=1']);
     expect(getThresholdsForScenario('fanbase_simul').http_req_failed).toBeDefined();
   });
 });

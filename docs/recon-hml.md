@@ -50,3 +50,36 @@ alvo, 504 emitidos pelo ALB e 5xx emitidos pelos alvos. O comando valida a
 conta com STS e resolve a dimensão CloudWatch pelo ARN do ALB. A relação
 entre a origem configurada na Azion e esse ALB precisa de confirmação pela
 equipe com acesso à configuração da borda.
+
+### Carga da torcida pela Azion
+
+Use `make hml-azion-fanbase` para executar as seis personas pela URL do preset
+`azion_edge`. A entrada exige `ALLOW_FANBASE_LOAD=true` e valores explícitos
+para `SCALE_FACTOR`, `RAMP_UP`, `HOLD` e `RAMP_DOWN`. Combine os valores com
+a equipe com base na capacidade observada de HML. Registre os parâmetros e o
+pico de usuários virtuais que o k6 informa no início do cenário. `load` e
+`stress` são sondas curtas. O POST real de atualização fica com a equipe.
+
+Antes da rodada, confirme a origem da Azion no `teste-multi-proxy`, a montagem
+do EFS no diretório servido pelas duas instâncias e as versões de WordPress e
+PHP-FPM efetivamente em uso. O bootstrap v7 ainda referencia um EFS que não
+foi encontrado na conta e região consultadas.
+
+Anote o início e o fim com fuso e ajuste `CW_MINUTES` no comando
+`make hml-cw-multi-proxy` para cobrir toda a janela a partir do início.
+Correlacione o horário, a rota, a duração e o status do POST com os logs de
+acesso do ALB. Quando disponíveis, use também o ID da requisição e os logs
+da Azion para identificar a camada que emitiu um eventual 504.
+
+### Smoke comparativo pela Azion e pelo ALB
+
+Use `make hml-azion-smoke` para verificar a rota pela borda e
+`make hml-multi-proxy-smoke` para executar o mesmo cenário diretamente no
+`teste-multi-proxy`. O segundo comando confirma a conta AWS de HML e
+resolve um IPv4 do ALB para aquela execução. O k6 mantém o hostname de
+HML na URL, no SNI e na validação TLS. Os relatórios do acesso direto
+usam o identificador `hml_multi_proxy`.
+
+Ambos usam dois usuários virtuais por 20 segundos e timeout de 3 segundos
+por requisição, ajustável por `REQUEST_TIMEOUT`. Registre as janelas das
+duas execuções para correlacionar com `make hml-cw-multi-proxy`.
