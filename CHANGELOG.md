@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.3.0...v1.4.0) (2026-11-13)
+
+
+### Features
+
+* **telemetria:** adiciona coleta do balanceador de testes em HML ([d6d495b](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/d6d495b63ab206bca2221e35f2c565ce0744d0e6))
+
 # [1.3.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.2.0...v1.3.0) (2026-11-12)
 
 
