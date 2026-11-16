@@ -1,3 +1,11 @@
+# [1.6.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.5.0...v1.6.0) (2026-11-16)
+
+
+### Features
+
+* **k6:** descreve os cenários nos relatórios de execução ([7644386](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/764438628ac627a518bc84bdcc238800e93fb960))
+* **telemetria:** amplia o monitoramento de homologação em tempo real ([4ea75ca](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/4ea75cac465b16e57b2bd463a632968d152d9df8))
+
 # [1.5.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.4.0...v1.5.0) (2026-11-13)
 
 
