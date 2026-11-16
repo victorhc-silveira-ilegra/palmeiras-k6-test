@@ -3,21 +3,51 @@ export interface SummaryRenderers {
   textSummary(data: unknown, options: { indent: string; enableColors: boolean }): string;
 }
 
-const SCENARIO_DISPLAY_TITLES: Record<string, string> = {
-  smoke: 'Validação Rápida de Saúde e Conectividade (Smoke)',
-  load: 'Sonda de Limites de Timeout (310s) e TTFB',
-  cache_bypass: 'Teste Sem Cache (Bypass Azion → Origem)',
-  api_mix: 'Varredura Sequencial das APIs Palmeiras e WordPress',
-  race_conditions: 'Diagnóstico de Trava de Sessão Pós-504 (/wp-admin)',
-  stress: 'Diagnóstico de Handshake e Keep-Alive na Borda',
-  spike: 'Rajada Curta de Reconexão e Lock (2 VUs)',
-  soak: 'Monitoramento Contínuo de Estabilidade de Sessão',
-  fanbase_simul: 'Simulação Calibrada da Torcida (Fanbase)',
-  heavy_sync_probe: 'Diagnóstico de Ação Pesada e Timeout Síncrono (HML)',
+const SCENARIO_DETAILS: Record<string, { title: string; description: string }> = {
+  smoke: {
+    title: 'Verificação rápida do WordPress',
+    description: 'Verifica o health check, a página inicial, as rotas REST e a exigência de autenticação no ToApp.',
+  },
+  load: {
+    title: 'Sonda de tempo de resposta do WordPress',
+    description: 'Consulta saúde e buscas e verifica o caminho administrativo e AJAX em três iterações.',
+  },
+  cache_bypass: {
+    title: 'Diagnóstico de requisições sem cache',
+    description: 'Consulta posts, buscas e AJAX para observar latência e falhas com requisições que evitam cache nas rotas compatíveis.',
+  },
+  api_mix: {
+    title: 'Verificação das APIs Palmeiras e WordPress',
+    description: 'Consulta notícias, jogos, eventos, estatísticas, lojas e mídia e verifica a autenticação no ToApp.',
+  },
+  race_conditions: {
+    title: 'Diagnóstico de bloqueio de sessão após timeout',
+    description: 'Compara a resposta após uma chamada AJAX usando a mesma sessão e um controle sem cookie.',
+  },
+  stress: {
+    title: 'Sonda curta de saúde, REST e AJAX',
+    description: 'Repete verificações de saúde, busca REST e AJAX com dois usuários virtuais por 20 segundos.',
+  },
+  spike: {
+    title: 'Rajada curta de busca e sessão',
+    description: 'Executa buscas REST e verifica contenção de sessão com dois usuários virtuais em duas iterações por usuário.',
+  },
+  soak: {
+    title: 'Acompanhamento de estabilidade do WordPress',
+    description: 'Repete verificações de saúde, posts REST e AJAX durante o intervalo configurado.',
+  },
+  fanbase_simul: {
+    title: 'Simulação de tráfego da torcida',
+    description: 'Executa seis perfis de navegação em paralelo, com escala e rampa configuráveis.',
+  },
+  heavy_sync_probe: {
+    title: 'Diagnóstico de operação síncrona do WordPress',
+    description: 'Mede uma ação administrativa configurável e acompanha uma chamada concorrente da sessão.',
+  },
 };
 
 export function resolveExecutiveReportTitle(scenarioName: string, envName: string): string {
-  const friendly = SCENARIO_DISPLAY_TITLES[scenarioName] ?? scenarioName;
+  const friendly = SCENARIO_DETAILS[scenarioName]?.title ?? scenarioName;
   return `Palmeiras HML — ${friendly} [${envName}]`;
 }
 
@@ -31,10 +61,18 @@ export function createSummaryHandler(
     const timestamp = nowFactory().toISOString().replace(/[:.]/g, '-');
     const prefix = `reports/summary-${envName}-${scenarioName}-${timestamp}`;
     const title = resolveExecutiveReportTitle(scenarioName, envName);
+    const description = SCENARIO_DETAILS[scenarioName]?.description ??
+      'Consulte as métricas e verificações para avaliar a execução.';
+    const scenario = { id: scenarioName, environment: envName, title, description };
+    const html = renderers.htmlReport(data, { title }).replace(
+      /<body\b[^>]*>/i,
+      (body) => `${body}<p style="margin: 1rem 2rem"><strong>Objetivo:</strong> ${description}</p>`
+    );
+    const summary = renderers.textSummary(data, { indent: ' ', enableColors: true });
     return {
-      [`${prefix}.html`]: renderers.htmlReport(data, { title }),
-      [`${prefix}.json`]: JSON.stringify(data),
-      stdout: renderers.textSummary(data, { indent: ' ', enableColors: true }),
+      [`${prefix}.html`]: html,
+      [`${prefix}.json`]: JSON.stringify({ ...(data as Record<string, unknown>), scenario }),
+      stdout: `\n${title}\nObjetivo: ${description}\n\n${summary}`,
     };
   };
 }

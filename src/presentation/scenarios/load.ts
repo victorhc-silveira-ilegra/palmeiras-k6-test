@@ -7,7 +7,7 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    sonda_limites_timeout_310s: {
+    sonda_saude_busca_ajax: {
       executor: 'per-vu-iterations',
       vus: 1,
       iterations: 3,

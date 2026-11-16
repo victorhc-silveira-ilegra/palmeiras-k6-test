@@ -7,7 +7,7 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    diagnostico_handshake_azion: {
+    sonda_curta_saude_rest_ajax: {
       executor: 'constant-vus',
       vus: 2,
       duration: '20s',

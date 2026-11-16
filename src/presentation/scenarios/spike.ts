@@ -7,7 +7,7 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    rajada_curta_reconexao_2vus: {
+    rajada_curta_busca_sessao: {
       executor: 'per-vu-iterations',
       vus: 2,
       iterations: 2,

@@ -7,7 +7,7 @@ const runtime = createScenarioRuntime();
 export const options = {
   insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
   scenarios: {
-    teste_sem_cache_direto_origem: {
+    diagnostico_requisicoes_sem_cache: {
       executor: 'constant-vus',
       vus: 1,
       duration: '30s',

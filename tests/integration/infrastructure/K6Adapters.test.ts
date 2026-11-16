@@ -173,7 +173,7 @@ describe('K6 Infrastructure Adapters Integration', () => {
       'fanbase_simul',
       'hml_classic_elb',
       {
-        htmlReport: (d) => `<html>${JSON.stringify(d)}</html>`,
+        htmlReport: (d) => `<html><body>${JSON.stringify(d)}</body></html>`,
         textSummary: () => 'SUMMARY TEXT',
       },
       () => new Date('2026-11-11T22:00:00.000Z')
@@ -183,8 +183,13 @@ describe('K6 Infrastructure Adapters Integration', () => {
     const htmlKey = 'reports/summary-hml_classic_elb-fanbase_simul-2026-11-11T22-00-00-000Z.html';
     const jsonKey = 'reports/summary-hml_classic_elb-fanbase_simul-2026-11-11T22-00-00-000Z.json';
     expect(out[htmlKey]).toContain('<html>');
-    expect(out[jsonKey]).toBe('{"metrics":{}}');
-    expect(out.stdout).toBe('SUMMARY TEXT');
+    expect(out[htmlKey]).toContain('Objetivo');
+    expect(JSON.parse(out[jsonKey] ?? 'null')).toMatchObject({
+      metrics: {},
+      scenario: { id: 'fanbase_simul', environment: 'hml_classic_elb', description: expect.any(String) },
+    });
+    expect(out.stdout).toContain('Objetivo:');
+    expect(out.stdout).toContain('SUMMARY TEXT');
 
     const customTitleHandler = createSummaryHandler(
       'custom_cenario',
@@ -205,6 +210,6 @@ describe('K6 Infrastructure Adapters Integration', () => {
       textSummary: () => 'TXT',
     });
     const defaultOut = defaultNowHandler({ metrics: {} });
-    expect(defaultOut.stdout).toBe('TXT');
+    expect(defaultOut.stdout).toContain('TXT');
   });
 });
