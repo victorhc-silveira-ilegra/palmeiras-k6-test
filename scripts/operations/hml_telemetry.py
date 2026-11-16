@@ -223,12 +223,16 @@ class HmlTelemetryCollector:
         commands = [
             "echo '--- STATUS_PHP ---'",
             "systemctl status php8.3-fpm --no-pager | grep -E 'Status:|Tasks:|Memory:' || true",
+            "echo '--- PHP_WORKERS_BUSY ---'",
+            "ps -eo state,comm | grep php-fpm | grep -E 'R|D' | wc -l || echo '0'",
             "echo '--- SOCKETS_RDS ---'",
             "ss -tan 'sport = :3306 or dport = :3306' | wc -l",
             "echo '--- LOAD_AVG ---'",
             "uptime | awk -F'load average:' '{print $2}'",
-            "echo '--- LAST_NGINX_ERROR ---'",
-            "tail -n 2 /var/log/nginx/error.log 2>/dev/null || true",
+            "echo '--- RECENT_NGINX_504_TIMEOUTS ---'",
+            "grep -E 'upstream timed out|110: Connection timed out| 504 ' /var/log/nginx/error.log 2>/dev/null | tail -n 3 || true",
+            "echo '--- LAST_NGINX_ACCESS_5XX ---'",
+            "grep -E ' (504|502|500|499) ' /var/log/nginx/access.log 2>/dev/null | tail -n 3 || true",
             "echo '--- LAST_WP_QUERY ---'",
             "tail -n 1 /var/www/html/wordpress/wp-content/hyperdb-queries.log 2>/dev/null || true",
         ]
@@ -249,53 +253,136 @@ class HmlTelemetryCollector:
         except Exception as exc:
             return {"status": "Error", "output": str(exc)}
 
-    def run_live_watch(self, interval: int = 5) -> None:
+    def run_live_watch(self, interval: int = 5, stop_on_504: bool = False) -> None:
+        log_file_path = "reports/live_telemetry_stream.log"
+        os.makedirs("reports", exist_ok=True)
         print(format_header(f"MODO LIVE WATCH - TELEMETRIA EC2/RDS HML EM TEMPO REAL (Intervalo: {interval}s)"))
-        print(f"{COLOR_YELLOW}Pressione Ctrl+C para encerrar o monitoramento.{COLOR_RESET}\n")
+        print(f"{COLOR_YELLOW}Monitoramento ativo em tempo real. Gravando stream em '{log_file_path}'...{COLOR_RESET}")
+        print(f"{COLOR_CYAN}Aguardando tráfego gerado pela equipe do Palmeiras via Azion...{COLOR_RESET}\n")
 
         iter_count = 0
-        try:
-            while True:
-                iter_count += 1
-                now_str = datetime.datetime.now().strftime("%H:%M:%S")
-                print(f"{COLOR_BOLD}{COLOR_BLUE}[{now_str}] Ciclo #{iter_count} - Inspecionando {HML_INSTANCE_ID}...{COLOR_RESET}")
+        total_504_captured = 0
+        with open(log_file_path, "a", encoding="utf-8") as log_file:
+            log_file.write(f"\n=== INICIO SESSAO LIVE WATCH [{datetime.datetime.now(datetime.timezone.utc).isoformat()}] ===\n")
+            log_file.flush()
+            try:
+                while True:
+                    iter_count += 1
+                    now_str = datetime.datetime.now().strftime("%H:%M:%S")
+                    cycle_header = f"[{now_str}] Ciclo #{iter_count} - Inspecionando {HML_INSTANCE_ID} e ALB Azion..."
+                    print(f"{COLOR_BOLD}{COLOR_BLUE}{cycle_header}{COLOR_RESET}")
+                    log_file.write(f"{cycle_header}\n")
 
-                poll = self.execute_quick_ssm_poll()
-                if poll.get("status") == "Success":
-                    raw = poll.get("output", "")
-                    sections = raw.split("--- ")
-                    parsed: Dict[str, str] = {}
-                    for sec in sections:
-                        if not sec.strip():
-                            continue
-                        lines = sec.strip().split("\n")
-                        title = lines[0].replace(" ---", "")
-                        parsed[title] = "\n".join(lines[1:]).strip()
+                    # 1. Metricas CloudWatch recentes (ALB 504 e Target Latency)
+                    alb_504 = 0
+                    alb_req = 0
+                    alb_latency = 0.0
+                    try:
+                        pts_504 = self.cw.get_metric_statistics(
+                            Namespace="AWS/ApplicationELB",
+                            MetricName="HTTPCode_ELB_504_Count",
+                            Dimensions=[{"Name": "LoadBalancer", "Value": HML_ALB_DIM}],
+                            StartTime=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=3),
+                            EndTime=datetime.datetime.now(datetime.timezone.utc),
+                            Period=60,
+                            Statistics=["Sum"],
+                        ).get("Datapoints", [])
+                        alb_504 = int(sum(p.get("Sum", 0) for p in pts_504))
 
-                    status_php = parsed.get("STATUS_PHP", "N/A")
-                    sockets_rds = parsed.get("SOCKETS_RDS", "0")
-                    load_avg = parsed.get("LOAD_AVG", "N/A")
-                    last_nginx = parsed.get("LAST_NGINX_ERROR", "")
-                    last_query = parsed.get("LAST_WP_QUERY", "")
+                        pts_req = self.cw.get_metric_statistics(
+                            Namespace="AWS/ApplicationELB",
+                            MetricName="RequestCount",
+                            Dimensions=[{"Name": "LoadBalancer", "Value": HML_ALB_DIM}],
+                            StartTime=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=3),
+                            EndTime=datetime.datetime.now(datetime.timezone.utc),
+                            Period=60,
+                            Statistics=["Sum"],
+                        ).get("Datapoints", [])
+                        alb_req = int(sum(p.get("Sum", 0) for p in pts_req))
 
-                    # Output compacto
-                    print(f"  * {COLOR_BOLD}PHP 8.3 FPM:{COLOR_RESET} {status_php}")
-                    print(f"  * {COLOR_BOLD}Conexoes RDS (3306):{COLOR_RESET} {sockets_rds} sockets | {COLOR_BOLD}Load Avg:{COLOR_RESET} {load_avg}")
+                        pts_lat = self.cw.get_metric_statistics(
+                            Namespace="AWS/ApplicationELB",
+                            MetricName="TargetResponseTime",
+                            Dimensions=[{"Name": "LoadBalancer", "Value": HML_ALB_DIM}],
+                            StartTime=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=3),
+                            EndTime=datetime.datetime.now(datetime.timezone.utc),
+                            Period=60,
+                            Statistics=["Average"],
+                        ).get("Datapoints", [])
+                        if pts_lat:
+                            alb_latency = float(pts_lat[-1].get("Average", 0.0))
+                    except Exception:
+                        pass
 
-                    if "upstream timed out" in last_nginx or "Connection timed out" in last_nginx:
-                        print(f"  * {COLOR_BOLD}{COLOR_RED}Ultimo erro Nginx:{COLOR_RESET} {last_nginx}")
-                    elif last_nginx:
-                        print(f"  * {COLOR_BOLD}Ultimo log Nginx:{COLOR_RESET} {last_nginx[:120]}")
+                    # 2. Diagnostico SSM na EC2
+                    poll = self.execute_quick_ssm_poll()
+                    if poll.get("status") == "Success":
+                        raw = poll.get("output", "")
+                        sections = raw.split("--- ")
+                        parsed: Dict[str, str] = {}
+                        for sec in sections:
+                            if not sec.strip():
+                                continue
+                            lines = sec.strip().split("\n")
+                            title = lines[0].replace(" ---", "")
+                            parsed[title] = "\n".join(lines[1:]).strip()
 
-                    if last_query:
-                        print(f"  * {COLOR_BOLD}Ultima query HyperDB:{COLOR_RESET} {last_query[:120]}")
-                else:
-                    print(f"  {COLOR_RED}[Aviso] Falha na telemetria rapida: {poll.get('status')}{COLOR_RESET}")
+                        status_php = parsed.get("STATUS_PHP", "N/A")
+                        busy_workers = parsed.get("PHP_WORKERS_BUSY", "0")
+                        sockets_rds = parsed.get("SOCKETS_RDS", "0")
+                        load_avg = parsed.get("LOAD_AVG", "N/A")
+                        nginx_timeouts = parsed.get("RECENT_NGINX_504_TIMEOUTS", "")
+                        nginx_5xx = parsed.get("LAST_NGINX_ACCESS_5XX", "")
+                        last_query = parsed.get("LAST_WP_QUERY", "")
 
-                print("-" * 70)
-                time.sleep(interval)
-        except KeyboardInterrupt:
-            print(f"\n{COLOR_GREEN}[INFO] Live Watch encerrado pelo operador.{COLOR_RESET}")
+                        has_504_event = (alb_504 > 0) or bool(nginx_timeouts) or ("504" in nginx_5xx)
+                        if has_504_event:
+                            total_504_captured += 1
+                            alert_msg = f"\n>>> {COLOR_BOLD}{COLOR_RED}[ALERTA: 504 / TIMEOUT CAPTURADO AO VIVO] (Ocorrencia #{total_504_captured}){COLOR_RESET} <<<"
+                            print(alert_msg)
+                            log_file.write(f"\n>>> [ALERTA: 504 / TIMEOUT CAPTURADO AO VIVO] <<<\n")
+
+                        # Print metrics
+                        line_alb = f"  * ALB Azion: Requests={alb_req} | HTTP 504={alb_504} | Latency={alb_latency:.2f}s"
+                        print(line_alb)
+                        log_file.write(f"{line_alb}\n")
+
+                        line_php = f"  * PHP 8.3 FPM: {status_php} (Workers Ocupados: {busy_workers})"
+                        print(line_php)
+                        log_file.write(f"{line_php}\n")
+
+                        line_infra = f"  * Sockets RDS (3306): {sockets_rds} | Load Avg:{load_avg}"
+                        print(line_infra)
+                        log_file.write(f"{line_infra}\n")
+
+                        if nginx_timeouts:
+                            err_line = f"  * {COLOR_BOLD}{COLOR_RED}[NGINX ERROR TIMEOUT]{COLOR_RESET}: {nginx_timeouts}"
+                            print(err_line)
+                            log_file.write(f"  * [NGINX ERROR TIMEOUT]: {nginx_timeouts}\n")
+
+                        if nginx_5xx:
+                            acc_line = f"  * {COLOR_BOLD}{COLOR_YELLOW}[NGINX ACCESS 5XX]{COLOR_RESET}: {nginx_5xx}"
+                            print(acc_line)
+                            log_file.write(f"  * [NGINX ACCESS 5XX]: {nginx_5xx}\n")
+
+                        if last_query:
+                            q_line = f"  * Ultima query HyperDB: {last_query[:120]}"
+                            print(q_line)
+                            log_file.write(f"{q_line}\n")
+
+                        if has_504_event and stop_on_504:
+                            print(f"\n{COLOR_GREEN}[INFO] 504 detectado e parametro stop_on_504 ativo. Encerrando watch.{COLOR_RESET}")
+                            break
+                    else:
+                        warn = f"  {COLOR_RED}[Aviso] Falha na telemetria SSM rapida: {poll.get('status')}{COLOR_RESET}"
+                        print(warn)
+                        log_file.write(f"{warn}\n")
+
+                    log_file.flush()
+                    print("-" * 70)
+                    time.sleep(interval)
+            except KeyboardInterrupt:
+                print(f"\n{COLOR_GREEN}[INFO] Live Watch encerrado pelo operador.{COLOR_RESET}")
 
 
 def render_terminal_report(telemetry: Dict[str, Any], minutes: int) -> None:
@@ -385,12 +472,13 @@ def main() -> None:
     parser.add_argument("--json", action="store_true", help="Saida em formato JSON bruto")
     parser.add_argument("--watch", "-w", action="store_true", help="Modo Live Watch: monitora EC2/RDS continuamente")
     parser.add_argument("--interval", "-i", type=int, default=5, help="Intervalo em segundos para o modo watch (padrao: 5)")
+    parser.add_argument("--stop-on-504", action="store_true", help="Encerra o live watch assim que capturar o primeiro evento 504/timeout")
     args = parser.parse_args()
 
     collector = HmlTelemetryCollector(region=args.region, minutes=args.minutes)
 
     if args.watch:
-        collector.run_live_watch(interval=args.interval)
+        collector.run_live_watch(interval=args.interval, stop_on_504=args.stop_on_504)
         return
 
     cw_metrics = collector.collect_cloudwatch_metrics()
