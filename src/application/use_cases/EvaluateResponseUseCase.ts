@@ -90,6 +90,7 @@ export class EvaluateResponseUseCase {
     this.metrics.recordUpstreamTtfbDuration(cmd.response.waitingMs ?? cmd.response.durationMs);
 
     if (evaluation.shouldLogFailure) {
+      const azionRequestId = getHeaderCaseInsensitive(cmd.response.headers, 'X-Azion-Request-Id');
       this.logger.emit('WARN', resolveSemanticEventName(evaluation), {
         route: cmd.routeName,
         status: cmd.response.status,
@@ -101,6 +102,7 @@ export class EvaluateResponseUseCase {
         reason: evaluation.failureReason,
         error: cmd.response.error,
         error_code: cmd.response.errorCode,
+        ...(azionRequestId ? { x_azion_request_id: azionRequestId } : {}),
         connecting_ms: cmd.response.connectingMs,
         tls_handshaking_ms: cmd.response.tlsHandshakingMs,
         waiting_ms: cmd.response.waitingMs,

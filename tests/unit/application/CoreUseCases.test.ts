@@ -68,11 +68,17 @@ describe('EvaluateResponseUseCase', () => {
     expect(logger.events[3]?.fields?.cache).toBe('5');
 
     useCase.evaluateAndRecord({
-      response: { status: 504, body: 'Gateway Timeout', headers: {}, durationMs: 120_000 },
+      response: {
+        status: 504,
+        body: 'Gateway Timeout',
+        headers: { 'X-Azion-Request-Id': 'req-azion-504-abc' },
+        durationMs: 120_000,
+      },
       routeName: 'azion_504',
     });
     expect(metrics.gatewayTimeouts504).toBe(1);
     expect(logger.events[4]?.event).toBe('k6.timeout.gateway_504');
+    expect(logger.events[4]?.fields?.x_azion_request_id).toBe('req-azion-504-abc');
 
     useCase.evaluateAndRecord({
       response: { status: 0, body: '', headers: {}, durationMs: 60_000, waitingMs: 12, error: 'request timeout', errorCode: 1050, connectingMs: 3, tlsHandshakingMs: 4 },
