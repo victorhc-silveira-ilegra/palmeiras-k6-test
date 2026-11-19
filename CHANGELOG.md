@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.6.0...v1.7.0) (2026-11-19)
+
+
+### Features
+
+* **hml:** integra testes e observabilidade à topologia atual ([18248be](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/18248bec55bf961c9675ddcff321ecb68a32b722))
+
 # [1.6.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.5.0...v1.6.0) (2026-11-16)
 
 
