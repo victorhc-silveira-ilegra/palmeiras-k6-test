@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.7.1...v1.8.0) (2026-11-19)
+
+
+### Features
+
+* **observabilidade:** registra X-Azion-Request-Id nos logs de falha HTTP ([72623d5](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/72623d505403580b92fb1f3205f5bab6b08f2f6a))
+
 ## [1.7.1](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.7.0...v1.7.1) (2026-11-19)
 
 
