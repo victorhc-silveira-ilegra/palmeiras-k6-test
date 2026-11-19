@@ -22,7 +22,8 @@ Este documento descreve a topologia de diretórios, convenções de empacotament
 │       └── templates/release-announcement.yaml
 ├── data/                                  # Datasets reais extraídos do ambiente HML
 │   ├── fanbase-model.json                 # Modelo da torcida (14M - 17.5M) e limites da EC2 HML
-│   └── hml-dataset.json                   # Posts, páginas, categorias, buscas e rotas REST HML
+│   ├── hml-dataset.json                   # Posts, páginas, categorias, buscas e rotas REST HML
+│   └── hml-topology.json                  # Recursos AWS vinculados às topologias current e legacy
 ├── docs/                                  # Documentação viva do sistema
 │   ├── README.md                          # Índice da documentação técnica
 │   ├── arquitetura.md                     # Especificação DDD/Hexagonal e políticas HML
@@ -43,27 +44,34 @@ Este documento descreve a topologia de diretórios, convenções de empacotament
 │   ├── commitlint.config.mjs              # Regras @commitlint/config-conventional
 │   ├── releaserc.json                     # Configuração semantic-release
 │   └── git-hooks/                         # install.sh, pre-commit, commit-msg, commitlint.sh e bin/
-├── reports/                               # Relatórios HTML e JSON gerados pelo k6 (gitignored)
+├── reports/                               # Relatórios HTML, JSON e manifestos de rodada (gitignored)
+│   └── runs/                              # Manifestos determinísticos de execução (<UUID>.json)
 ├── scripts/                               # Scripts operacionais e quality gate
 │   ├── README.md                          # Documentação dos scripts
 │   ├── operations/
 │   │   ├── clean_workspace.py             # Orquestrador CI/CD por área e estágio (--stage pipeline)
-│   │   └── gates/                         # Módulos por área (typescript, docker, github, scripts)
+│   │   ├── gates/                         # Módulos por área (typescript, docker, github, scripts)
+│   │   ├── hml_context.py                 # Descoberta segura e resolução de recursos AWS HML
+│   │   ├── run_hml.py                     # Controlador de execução k6 e gravação de manifestos
+│   │   ├── ec2_smoke.py                   # Túnel SSM efêmero para execução direta na EC2
+│   │   ├── diagnose_hml.py                # Diagnóstico e correlação entre k6, ALB e Azion
+│   │   └── hml_telemetry.py               # Coleta e monitoramento contínuo CloudWatch/SSM
 │   ├── recon-hml.sh                       # Levantamento read-only de recursos AWS HML
-│   └── cloudwatch-summary.sh              # Correlação de métricas CloudWatch (EC2/ELB/RDS)
+│   └── cloudwatch-summary.sh              # Correlação de métricas CloudWatch e ALB
 ├── src/                                   # Código-fonte organizado em camadas DDD/Hexagonal
 │   ├── README.md                          # Descrição das 4 camadas e tipos auxiliares
 │   ├── domain/                            # Entidades, Value Objects, Políticas e Thresholds
 │   ├── application/                       # Portas abstratas e Casos de Uso
 │   ├── infrastructure/                    # Adaptadores k6, Settings, Logging e Relógio
-│   ├── presentation/                      # Composition Root e os 9 cenários k6
+│   ├── presentation/                      # Composition Root e os 10 cenários k6
 │   └── types/                             # Declarações de ambiente k6 (k6.d.ts)
 ├── tests/                                 # Suíte automatizada com 100% branch coverage
 │   ├── README.md                          # Estratégia e comandos da suíte de testes
 │   ├── helpers/                           # Fakes e stubs em memória compartilhados nos testes
 │   ├── unit/                              # Testes unitários isolados (domain e application)
-│   └── integration/                       # Testes de integração de adaptadores e container
-│       └── README.md                      # Documentação dos testes de integração
+│   ├── integration/                       # Testes de integração de adaptadores e container
+│   │   └── README.md                      # Documentação dos testes de integração
+│   └── operations/                        # Testes em Python do runner, fixtures AWS e túneis SSM
 ├── AGENTS.md                              # Diretrizes canônicas para agentes inteligentes
 ├── .dockerignore                          # Exclusões do contexto de build Docker
 ├── .pre-commit-config.yaml                # Hooks locais NOME_DA_TECNOLOGIA | STEP

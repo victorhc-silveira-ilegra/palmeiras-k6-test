@@ -25,7 +25,7 @@ Na camada de aplicação (`src/application/ports/`), todas as dependências exte
 
 ### 3.1 Segurança Anti-PROD (`TargetEnvironment`)
 
-O Value Object [TargetEnvironment.ts](../src/domain/value_objects/TargetEnvironment.ts) aceita apenas os alvos HML `hml_classic_elb`, `hml_alb` e `azion_edge`. A função `assertNotProd` valida ambiente, URL base, cabeçalhos de host e caminhos dinâmicos retornados em `_links.self`, lançando `ForbiddenProductionTargetError` ao detectar `prod`, `www.palmeiras.com.br` ou `1627138501`.
+O Value Object [TargetEnvironment.ts](../src/domain/value_objects/TargetEnvironment.ts) aceita os 5 alvos HML autorizados: `azion_edge`, `hml_alb`, `hml_ec2_direct`, `ec2_direct` e `hml_classic_elb`. A função `assertNotProd` valida ambiente, URL base, cabeçalhos de host e caminhos dinâmicos retornados em `_links.self`, lançando `ForbiddenProductionTargetError` ao detectar `prod`, `www.palmeiras.com.br` ou `1627138501`.
 
 ### 3.2 Avaliação de Segurança e Payloads (`ResponseSafetyPolicy`)
 
@@ -35,25 +35,27 @@ O módulo [ResponseSafetyPolicy.ts](../src/domain/policies/ResponseSafetyPolicy.
 - `extractPhpWarningFreeJson`: detecta e contabiliza prefixos HTML de `Warning`, `Notice` e `Deprecated` gerados por `WP_DEBUG_DISPLAY` em HML antes de extrair e contar os registros JSON válidos.
 - `evaluateResponseSafety`: detecta redirect inesperado para PROD, rate limit `429`, erros fatais PHP/DB, deadlocks e falhas 5xx ou `status === 0`.
 
-### 3.3 Catálogo de Thresholds (`ThresholdCatalog`)
+### 3.3 Catálogo de Thresholds (`ThresholdCatalog`) e Perfis de Smoke (`SmokeProfile`)
 
-O serviço [ThresholdCatalog.ts](../src/domain/services/ThresholdCatalog.ts) fornece os perfis para os 9 cenários (`smoke`, `load`, `api_mix`, `fanbase_simul`, `stress`, `spike`, `soak`, `cache_bypass`, `race_condition`), garantindo em todos eles a trava `checks{check:no_prod_redirect}: ['rate==1']`.
+O serviço [ThresholdCatalog.ts](../src/domain/services/ThresholdCatalog.ts) fornece os perfis para os 10 cenários (`smoke`, `load`, `api_mix`, `fanbase_simul`, `stress`, `spike`, `soak`, `cache_bypass`, `race_conditions`, `heavy_sync_probe`), garantindo em todos eles a trava `checks{check:no_prod_redirect}: ['rate==1']`. O serviço [SmokeProfile.ts](../src/domain/services/SmokeProfile.ts) calibra a execução entre `functional` (padrão, 2 VUs, 1 iteração por VU, timeout 15s) e `strict` (20s contínuos com limites rígidos de latência).
 
 ## 4. Estratégia de Testes e Qualidade
 
 - **Cobertura Integral (100% Branch Coverage)**: A suíte executada via `npx vitest run --coverage` audita `100%` de linhas, instruções, funções e branches em `src/domain/`, `src/application/`, `src/infrastructure/` e `src/presentation/composition/`.
 - **Testes Unitários Determinísticos (`tests/unit/`)**: Utilizam implementações em memória (`InMemoryEventLogger`, `SpyMetricsRecorder`, `StubHttpTransport`, `FixedClock`) para cobrir todas as jornadas e fluxos de erro sem rede externa.
 - **Testes de Integração (`tests/integration/`)**: Validam carregamento de `Settings`, sanitização de logs, adaptadores HTTP/Métricas/Reporter, leitura real de `data/hml-dataset.json` e `data/fanbase-model.json`, e montagem do `RuntimeContainer`.
-- **Inspeção Nativa k6**: Todos os cenários em `src/presentation/scenarios/*.ts` são validados com `k6 inspect`, além do teste negativo obrigatório `k6 inspect -e TARGET_ENV=prod_alb src/presentation/scenarios/smoke.ts`.
+- **Testes de Operações (`tests/operations/`)**: Validam runners, túneis SSM e fixtures AWS de HML via `python3 -m unittest discover -s tests/operations`.
+- **Inspeção Nativa k6**: Todos os 10 cenários em `src/presentation/scenarios/*.ts` são validados com `k6 inspect`, além do teste negativo obrigatório `k6 inspect -e TARGET_ENV=prod_alb src/presentation/scenarios/smoke.ts`.
 
 ## 5. Entrypoints e Execução
 
-Todos os 9 cenários executam a partir de `src/presentation/scenarios/` usando `TARGET_ENV=hml_classic_elb` por padrão:
-- `smoke.ts` — Validação rápida de saúde HML (2 VUs, 20s).
+Os 10 cenários executam a partir de `src/presentation/scenarios/` gerenciados pelo controlador HML:
+- `smoke.ts` — Validação rápida de saúde HML (perfil `functional` ou `strict`).
 - `load.ts` — Carga mista REST + busca dinâmica calibrada para HML.
 - `api_mix.ts` — Rotação completa dos endpoints `/wp-json/wp/v2/*`, `/wp-json/apiverdao/v1/*`, `/wp-json/palmeiras/v1/*` e guarda `/wp-json/toApp/v1/*`.
 - `fanbase_simul.ts` — Simulação simultânea das 6 personas da torcida com `startTime: '0s'` escalada por `SCALE_FACTOR`.
-- `stress.ts` e `spike.ts` — Testes de rampa até o limite `pm.max_children=35` e picos de dia de jogo.
-- `soak.ts` — Teste prolongado (`SOAK_DURATION`) para observar consumo de memória e rotação de logs no nó `homolog`.
+- `stress.ts` e `spike.ts` — Testes de rampa até o limite de capacidade e picos de dia de jogo.
+- `soak.ts` — Teste prolongado (`SOAK_DURATION`) para observar consumo de memória e estabilidade.
 - `cache_bypass.ts` — Bypass de cache na origem via strings `nocache`.
 - `race_conditions.ts` — Contenção concorrente sobre a rota legada `/api/v1/ingressos/claim`.
+- `heavy_sync_probe.ts` — Sonda de concorrência com 2 VUs para detecção de timeout síncrono e lock de sessão pós-corte.

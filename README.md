@@ -111,32 +111,44 @@ Ajuste as variáveis no arquivo `.env` local ou via `-e CHAVE=VALOR` na chamada 
 
 ## Comandos Operacionais
 
-Todas as tarefas de validação, execução em HML e contêineres são expostas via `Makefile` (`make help`):
+Todas as tarefas de validação, execução em HML e contêineres são expostas via `Makefile` (`make help`), organizadas em 4 categorias canônicas:
 
 ```bash
-# Menu interativo e Quality Gates (5 Estágios)
-make help               # Exibe menu completo e toolchain detectada
-make app-lint           # TypeScript strict, ESLint, zero comentários, <= 300 linhas, zero emojis
-make app-security       # Varredura de segredos, auditoria anti-PROD e npm audit --omit=dev
-make app-test           # Vitest com 100% branch coverage + k6 inspect em todos os cenários
-make app-validate       # Validação de JSONs, Docker/CI YAML, links Markdown e bash -n
-make app-build          # Compilação tsc e docker build --check
-make app-ci             # Executa o pipeline completo dos 5 estágios com tabela de resumo
-make app-clean          # Remove dist/, coverage/ e __pycache__
+# 1. APP e Quality Gate (5 Estágios)
+make help                                # Exibe menu completo e toolchain detectada
+make app-setup                           # Prepara .env, dependências e hooks (alias: app-start)
+make app-ci                              # Executa o pipeline completo dos 5 estágios com tabela de resumo
+make app-gate STAGE=all                  # Executa estágio: lint, security, test, validate, build ou all
+make app-hooks                           # Executa pre-commit em todos os arquivos
+make app-clean                           # Remove caches dist/, coverage/ e __pycache__
 
-# Operações em HML (Proibido PROD)
-make hml-azion-smoke    # Verifica rotas e autenticação com timeout padrão de 15s
-make hml-multi-proxy-smoke  # Executa o mesmo smoke direto no ALB, com TLS validado
-make hml-azion-smoke SMOKE_PROFILE=strict  # Aplica os limites de desempenho
-make hml-azion-fanbase ALLOW_FANBASE_LOAD=true SCALE_FACTOR=0.4 RAMP_UP=5s HOLD=15s RAMP_DOWN=5s
-make hml-cw-multi-proxy CW_MINUTES=15  # Consulta métricas do ALB teste-multi-proxy
+# 2. Testes de HML (Proibido PROD)
+make test-smoke                          # Smoke funcional padrão (TARGET=azion, alb, ec2 ou all)
+make test-smoke TARGET=alb               # Validação direta no ALB teste-multi-proxy (recomendado)
+make test-smoke TARGET=ec2               # Validação direta na EC2 do ASG via túnel SSM
+make test-smoke TARGET=alb SMOKE_PROFILE=strict  # Smoke curto com SLAs rígidos
+make test-fanbase TARGET=alb ALLOW_FANBASE_LOAD=true SCALE_FACTOR=0.4 RAMP_UP=5s HOLD=15s RAMP_DOWN=5s
+make test-504 MODE=compare               # Diagnóstico comparativo nos 3 caminhos (EC2, ALB, Azion)
+make test-504 MODE=session TARGET=alb    # Diagnóstico de lock de sessão
+make test-504 MODE=sync TARGET=alb HEAVY_PATH=/wp-admin/
+make test-run SCENARIO=api_mix TARGET=alb
 
-# Execução Conteinerizada (Docker Compose)
-make docker-up          # Inicializa serviço palmeiras-k6 em segundo plano
-make docker-smoke       # Executa smoke.ts em HML dentro do contêiner (--rm)
-make docker-fanbase     # Executa fanbase_simul.ts preservando relatórios em reports/
-make docker-logs        # Acompanha logs em tempo real (LEVEL=all / F=0 / T=1 / P=1)
-make docker-down        # Para o contêiner preservando reports/
+# 3. Observabilidade e Telemetria
+make obs-recon                           # Descoberta de ALB, ASG e recursos atuais de HML
+make obs-collect CW_MINUTES=15           # Coleta métricas e logs AWS/SSM da janela recente
+make obs-collect RUN=reports/runs/<ID>.json # Coleta focada na janela de uma rodada
+make obs-watch WATCH_INTERVAL=15         # Acompanha ALB e hosts do ASG continuamente
+make obs-diagnose RUN=reports/runs/<ID>.json AZION_LOG=logs.json # Correlaciona k6, ALB e Azion
+
+# 4. Execução Conteinerizada (Docker)
+make docker-build                        # Constrói a imagem da suíte
+make docker-test TEST=smoke TARGET=alb   # Executa TEST=smoke, fanbase ou 504 no TARGET
+make docker-up                           # Inicializa serviço palmeiras-k6 em segundo plano
+make docker-logs                         # Acompanha logs em tempo real (LEVEL=all / F=0 / T=1 / P=1)
+make docker-ps                           # Exibe o estado dos contêineres
+make docker-sh                           # Abre shell no contêiner da suíte
+make docker-down                         # Encerra o serviço preservando reports/
+make docker-clean                        # Remove contêineres, redes e imagem local
 ```
 
 ## Integração Contínua e Harness de Agentes

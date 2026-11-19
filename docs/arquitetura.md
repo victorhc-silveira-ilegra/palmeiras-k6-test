@@ -77,10 +77,11 @@ O núcleo puro do sistema, sem importações de `k6`, `node:*` ou bibliotecas ex
 
 - `errors/DomainError.ts`: Exceções `DomainInvariantError` e `ForbiddenProductionTargetError`.
 - `entities/JourneyModels.ts`: Contratos canônicos imutáveis (`HmlDataset`, `FanbaseModel`, `WpPostDetailPayload`, `SearchHitPayload`, `JogosMesPayload`, `SafetyEvaluationResult`, `ScenarioName`).
-- `value_objects/TargetEnvironment.ts`: Value Object que valida e resolve apenas os 3 alvos HML autorizados (`hml_classic_elb`, `hml_alb`, `azion_edge`), aplicando `assertNotProd`.
+- `value_objects/TargetEnvironment.ts`: Value Object que valida e resolve os 5 alvos HML autorizados (`azion_edge`, `hml_alb`, `hml_ec2_direct`, `ec2_direct`, `hml_classic_elb`), aplicando `assertNotProd`.
 - `value_objects/FanbaseAllocation.ts`: Dimensiona de forma determinística as 6 personas simultâneas da torcida entre 14 milhões e 17,5 milhões de torcedores conforme `scaleFactor`.
 - `policies/ResponseSafetyPolicy.ts`: Regras puras para leitura de cabeçalhos case-insensitive, detecção de redirects para PROD, identificação de sinais de cache (`X-FastCGI-Cache`, `X-Cache`, `Age`), extração limpa de JSON após vazamentos de `WP_DEBUG_DISPLAY` e detecção de erros fatais/deadlocks.
-- `services/ThresholdCatalog.ts`: Catálogo estrito de SLAs dos 9 perfis de cenário mantendo sempre `checks{check:no_prod_redirect}: ['rate==1']`.
+- `services/SmokeProfile.ts`: Configuração e SLAs dos perfis de smoke (`functional` padrão e `strict`).
+- `services/ThresholdCatalog.ts`: Catálogo estrito de SLAs dos perfis de cenário mantendo sempre `checks{check:no_prod_redirect}: ['rate==1']`.
 
 *Invariante*: O domínio nunca emite chamadas de log e desconhece detalhes de transporte HTTP ou métricas do `k6`.
 
@@ -100,6 +101,7 @@ Coordena os fluxos de requisição, jornadas encadeadas e avaliação de respost
 - `use_cases/RunPalmeirasApiUseCase.ts`: Endpoints customizados `apiverdao/v1/*`, `palmeiras/v1/*`, `wp/v2/campeonato`, guarda de autenticação `/wp-json/toApp/v1/*` (`401`) e sondas de regressão `500` conhecidas (`atendimento`, `jogos-atualizar`).
 - `use_cases/RunFanbaseJourneysUseCase.ts`: Jornadas encadeadas multi-passo de leitura de notícias, dia de jogo, busca com resolução dinâmica de `_links.self` protegida por `assertNotProd`, catálogo/mídia e matriz completa de métodos e status HTTP.
 - `use_cases/ClaimMatchTicketUseCase.ts`: Contenção de concorrência para a rota transacional legada `/api/v1/ingressos/claim`.
+- `use_cases/RunTimeoutDiagnosticUseCase.ts`: Diagnóstico de lock de sessão pós-504, sondas síncronas pesadas em rotas administrativas e diferenciação entre timeout HTTP 504 e quedas de transporte na borda Azion.
 
 ### 2.3 Camada de Infraestrutura (`src/infrastructure`)
 
@@ -118,8 +120,8 @@ Implementa as portas da aplicação para runtime `k6`, configuração e telemetr
 Composition Root e entrypoints declarativos executados pelo binário `k6`.
 
 - `composition/createRuntimeContainer.ts`: Único ponto de injeção `Settings -> Adapters -> Use Cases`, retornando `RuntimeContainer`.
-- `scenarios/_k6Runtime.ts`: Instancia métricas `k6/metrics`, carrega `SharedArray` e constrói o `RuntimeContainer`.
-- `scenarios/*.ts`: Perfis `smoke`, `load`, `stress`, `spike`, `soak`, `api_mix`, `cache_bypass`, `race_conditions` e `fanbase_simul`.
+- `scenarios/_k6Runtime.ts`: Instancia métricas `k6/metrics`, carrega `SharedArray`, resolve hosts/túneis SSM dinâmicos e constrói o `RuntimeContainer`.
+- `scenarios/*.ts`: 10 perfis declarativos: `smoke`, `load`, `stress`, `spike`, `soak`, `api_mix`, `cache_bypass`, `race_conditions`, `heavy_sync_probe` e `fanbase_simul`.
 
 ## 3. Políticas de Negócio Detalhadas
 

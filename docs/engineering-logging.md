@@ -28,11 +28,14 @@ Diretrizes e especificações técnicas de observabilidade e emissão de logs es
 | `k6.response.php_fatal` | `WARN` | `EvaluateResponseUseCase` | `route`, `status`, `duration_ms`, `cache`, `reason` | Corpo da resposta apresentou erro fatal PHP, erro de conexão MySQL ou deadlock |
 | `k6.response.transport_error` | `WARN` | `EvaluateResponseUseCase` | `route`, `status`, `duration_ms`, `cache`, `reason` | Erro 5xx não esperado ou falha de rede/TLS (`status === 0`) |
 | `k6.response.php_warning_stripped` | `DEBUG` | `EvaluateResponseUseCase` | `route`, `status` | Prefixos HTML emitidos por `WP_DEBUG_DISPLAY` removidos antes do `JSON.parse` |
+| `k6.timeout.slow_ttfb` | `WARN` | `RunTimeoutDiagnosticUseCase` | `route`, `status`, `duration_ms`, `reason` | Tempo de espera (TTFB) de resposta síncrona atingiu ou superou 60 segundos |
+| `k6.session.lock_detected` | `WARN` | `RunTimeoutDiagnosticUseCase` | `route`, `status`, `duration_ms`, `reason` | Bloqueio de sessão detectado em requisição subsequente pós-timeout/corte 504 |
 
 ## 4. Artefatos de Saída e Correlação CloudWatch
 
+- **Manifestos Determinísticos de Rodada (`reports/runs/`)**: Cada execução controlada gera `reports/runs/<run_id>.json` contendo UUID único, perfil, alvo resolvido, status de saída, janela UTC/BRT e tags propagadas ao runtime e aos relatórios.
 - **Sumários `k6` (`reports/`)**: Cada execução grava `reports/summary-<env>-<cenario>-<timestamp>.html` e `.json` via [K6ReporterAdapter.ts](../src/infrastructure/k6/K6ReporterAdapter.ts).
-- **Correlação AWS HML**: O script [cloudwatch-summary.sh](../scripts/cloudwatch-summary.sh) consulta métricas de CPU da EC2 `homolog` (`i-02b29195a2fdaf1e7`), requisições/latência do Classic ELB `dev-sep-hml`, métricas do cluster `db-sep-1` e últimos eventos do Log Group `/palmeiras/hml/nginx/error`.
+- **Correlação AWS HML**: Os scripts [cloudwatch-summary.sh](../scripts/cloudwatch-summary.sh) e [diagnose_hml.py](../scripts/operations/diagnose_hml.py) consultam métricas de ALB, ASG, EC2, cluster Aurora e logs do Nginx correlacionando com a janela exata da rodada (`RUN=reports/runs/<ID>.json`) ou janela retroativa.
 
 ## 5. Medidas de Proteção e Sanitização de Dados Sensíveis
 

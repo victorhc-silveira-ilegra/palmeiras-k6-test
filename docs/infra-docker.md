@@ -6,8 +6,8 @@ Especificações técnicas de empacotamento e execução do **Palmeiras K6 Test 
 
 O contêiner utiliza a imagem oficial `grafana/k6:latest` empacotada pelo [Dockerfile](../infra/docker/Dockerfile) em `infra/docker/` (governado por [.hadolint.yaml](../infra/docker/.hadolint.yaml)):
 
-- **Alvo Padrão Isolado para HML**: A imagem define `ENV TARGET_ENV=hml_classic_elb`, mantendo a política estrita anti-PROD tanto no ambiente do contêiner quanto no núcleo de domínio (`TargetEnvironment`).
-- **Conectividade de Saída**: Opera com rede padrão bridge ou host conforme necessidade da estação de testes para alcançar o Classic ELB público `dev-sep-hml-160178191.us-east-1.elb.amazonaws.com` (ou borda/VPC em execuções autorizadas).
+- **Alvo Padrão Isolado para HML**: A imagem define `ENV TARGET_ENV=azion_edge`, mantendo a política estrita anti-PROD tanto no ambiente do contêiner quanto no núcleo de domínio (`TargetEnvironment`).
+- **Conectividade de Saída**: Opera com rede padrão bridge ou host conforme necessidade da estação de testes para alcançar o ALB `teste-multi-proxy`, túnel SSM ou borda Azion em execuções autorizadas.
 - **Persistência de Relatórios**: A montagem de volume para `/app/reports` preserva no host os resumos HTML e JSON produzidos pelo `K6ReporterAdapter`.
 
 ## 2. Estrutura de Empacotamento (`Dockerfile`)
@@ -31,8 +31,9 @@ docker build --check -f infra/docker/Dockerfile .
 docker compose --env-file .env.example -f infra/docker/docker-compose.yml --project-directory . config -q
 
 # Ciclo de vida padronizado via Makefile
-make docker-smoke       # Smoke test HML em contêiner efêmero (--rm)
-make docker-fanbase     # Simulação simultânea da torcida em HML preservando reports/
+make docker-build       # Constrói a imagem localmente
+make docker-test TEST=smoke TARGET=alb   # Executa smoke test no TARGET dentro do contêiner com manifesto
+make docker-test TEST=fanbase TARGET=alb # Executa fanbase_simul.ts no TARGET
 make docker-up          # Inicializa serviço palmeiras-k6 em segundo plano (SCENARIO=smoke)
 make docker-logs        # Logs filtrados INFO (LEVEL=all / F=0 / T=1 / P=1)
 make docker-ps          # Status do serviço

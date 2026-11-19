@@ -40,22 +40,24 @@ O fluxo local ([.pre-commit-config.yaml](../.pre-commit-config.yaml) e `Makefile
 
 ```bash
 # Execução integral (Commitlint + 4 áreas x 5 estágios com resumo)
-make app-ci          # ou make ci / make all
+make app-ci          # ou make ci / make all / make app-gate STAGE=all
 
-# Execução individual por estágio (todas as áreas)
-make app-lint        # ou make lint
-make app-security    # ou make security
-make app-test        # ou make test / make app-tests
-make app-validate    # ou make validate
-make app-build       # ou make build
+# Execução canônica por estágio (todas as áreas)
+make app-gate STAGE=lint
+make app-gate STAGE=security
+make app-gate STAGE=test
+make app-gate STAGE=validate
+make app-gate STAGE=build
 
 # Execução granular por área e estágio
 python3 scripts/operations/clean_workspace.py --area typescript --stage test
 
-# Execução controlada em HML (exclusivo HML)
-make hml-smoke       # ou make smoke-hml
-make hml-fanbase     # ou make fanbase-hml
-make hml-anti-prod   # Valida fail-fast contra prod_alb
+# Execução canônica em HML (exclusivo HML)
+make test-smoke TARGET=alb   # Validação funcional direta no ALB (recomendado)
+make test-smoke TARGET=ec2   # Validação direta na EC2 via túnel SSM
+make test-504 MODE=compare   # Comparativo 3-vias de timeout e sessão
+make obs-recon               # Descoberta de recursos atuais de HML
+make hml-anti-prod           # Valida fail-fast contra prod_alb
 ```
 
 ## 4. Governança de Commits e Git Hooks
