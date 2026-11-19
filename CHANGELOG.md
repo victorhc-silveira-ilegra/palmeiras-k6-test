@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.8.0...v1.9.0) (2026-11-19)
+
+
+### Features
+
+* **hml:** permite testes privados do ALB por túnel SSM ([dbef18e](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/dbef18e8ebeff4ec2201639ffc95df8bffb75262))
+
 # [1.8.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.7.1...v1.8.0) (2026-11-19)
 
 
