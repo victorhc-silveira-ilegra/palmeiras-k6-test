@@ -272,7 +272,17 @@ test-smoke:
 	$(if $(filter all,$(TARGET)),,$(if $(TEST_TARGET_ENV),,$(error TARGET deve ser azion, alb, ec2 ou all)))
 	@status=0; \
 	for target in $(if $(filter all,$(TARGET)),azion_edge hml_alb hml_ec2_direct,$(TEST_TARGET_ENV)); do \
-		$(MAKE) hml-smoke TARGET_ENV=$$target || status=$$?; \
+		code=0; \
+		$(HML_RUNNER) --target "$$target" --target-url "$(TARGET_URL)" -- $(SMOKE_K6_ARGS) || code=$$?; \
+		if [ "$$code" -ne 0 ]; then \
+			echo "Smoke falhou no alvo $$target (código $$code). Consulte os checks e o manifesto da rodada." >&2; \
+			if [ "$$target" = "azion_edge" ]; then \
+				echo "Dica: Para validar diretamente a infraestrutura AWS de HML sem passar pela borda da Azion, execute:" >&2; \
+				echo "  make test-smoke TARGET=alb   (via Application Load Balancer teste-multi-proxy)" >&2; \
+				echo "  make test-smoke TARGET=ec2   (via túnel SSM na EC2 do ASG)" >&2; \
+			fi; \
+			if [ "$$status" -eq 0 ]; then status=$$code; fi; \
+		fi; \
 	done; exit $$status
 
 test-fanbase:
@@ -286,7 +296,7 @@ test-run:
 
 test-504:
 	$(if $(filter $(MODE),compare session sync),,$(error MODE deve ser compare, session ou sync))
-	$(if $(TEST_TARGET_ENV),,$(error TARGET deve ser azion, alb ou ec2))
+	$(if $(filter compare,$(MODE)),,$(if $(TEST_TARGET_ENV),,$(error TARGET deve ser azion, alb ou ec2)))
 	@status=0; \
 	for target in $(if $(filter compare,$(MODE)),hml_ec2_direct hml_alb azion_edge,$(TEST_TARGET_ENV)); do \
 		$(MAKE) hml-run TARGET_ENV=$$target SCENARIO=$(if $(filter compare,$(MODE)),cache_bypass,$(if $(filter session,$(MODE)),race_conditions,heavy_sync_probe)) || status=$$?; \
