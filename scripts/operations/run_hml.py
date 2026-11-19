@@ -8,7 +8,6 @@ import datetime as dt
 import json
 import os
 from pathlib import Path
-import socket
 import subprocess
 import sys
 import uuid
@@ -36,8 +35,6 @@ def run(args, topology, manifest, save):
         if url:
             raise ValueError("O acesso ao ALB usa o destino validado pela descoberta.")
         if topology["mode"] == "current":
-            addresses = socket.getaddrinfo(topology["alb"]["DNSName"], 443, socket.AF_INET)
-            ip = addresses[0][4][0]
             url = "https://" + topology["hostname"]
             route = "hml_multi_proxy"
         else:
@@ -67,6 +64,9 @@ def run(args, topology, manifest, save):
     params = list(extra)
     for key, value in values.items():
         params.extend(["-e", f"{key}={value}"])
+    if target == "hml_alb" and topology["mode"] == "current":
+        from alb_smoke import run_private_alb
+        return run_private_alb(args, topology, manifest, save, params, invoke)
     if target in ("hml_ec2_direct", "ec2_direct") and not url:
         from ec2_smoke import run_tunnel_smoke
         def record_host(instance):

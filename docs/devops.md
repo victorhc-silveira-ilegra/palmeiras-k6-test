@@ -65,3 +65,17 @@ make hml-anti-prod           # Valida fail-fast contra prod_alb
 - **Instalação de Hooks**: Execute `make app-pre-commit` (ou `make hooks`) para configurar `pre-commit` (`pre-commit` e `commit-msg`) ou `core.hooksPath` em `.githooks/` como fallback.
 - **Execução Manual de Hooks**: Execute `make app-pre-commit-run`.
 - **Conventional Commits**: Todas as mensagens seguem [commitlint.config.mjs](../linters/commitlint.config.mjs) (`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`) e alimentam o `semantic-release` em pushes para `main`.
+
+## Testar o ALB com a origem protegida
+
+`make test-smoke TARGET=alb` usa uma EC2 saudável do `TESTE-WP` para abrir um túnel SSM até uma interface privada do ALB descoberto. A URL continua sendo `https://hmlverdao.palmeiras.com.br`; o mapeamento de conexão do k6 aponta para a porta local do túnel, preservando hostname, SNI e validação do certificado. O controlador encerra a sessão ao final, inclusive quando o k6 reprova thresholds.
+
+```bash
+make test-smoke TARGET=alb
+make test-smoke TARGET=all
+make docker-test TEST=smoke TARGET=alb
+```
+
+São necessários AWS CLI autenticado, Session Manager Plugin e permissões SSM para `AWS-StartPortForwardingSessionToRemoteHost`. A instância gerenciada precisa alcançar a porta 443 privada do ALB. O SG cliente `hml-k6-ssm-client` identifica somente os hosts de HML autorizados; o ALB permite HTTPS desse grupo pela rede privada. A entrada pública permanece restrita à lista Azion. O executor não cria regras temporárias, não libera o IP do operador e não modifica `/etc/hosts`.
+
+O manifesto registra `connection_mode=ssm_private_alb`, `selected_instance` e `alb_private_ip`. O acesso direto público ao ALB continua bloqueado. A configuração de rede foi persistida no template do ASG, sem refresh. A comparação de latência deve considerar o transporte SSM; esse caminho atende diagnóstico funcional e não representa capacidade ou latência de tráfego público. A execução via Docker utiliza a rede host configurada no projeto Linux para alcançar o túnel local. Carga e estresse continuam exigindo autorização própria.

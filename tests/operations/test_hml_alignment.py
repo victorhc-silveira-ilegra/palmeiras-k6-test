@@ -48,6 +48,7 @@ class FixtureAws:
             ("ec2", "describe-instances"): {"Reservations": [{"Instances": [{
                 "InstanceId": "i-hml", "VpcId": "vpc-hml",
             }]}]},
+            ("ec2", "describe-network-interfaces"): {"NetworkInterfaces": [{"VpcId": "vpc-hml", "PrivateIpAddress": "172.31.1.10"}]},
             ("ssm", "describe-instance-information"): {"InstanceInformationList": [{
                 "InstanceId": "i-hml", "PingStatus": "Online",
             }]},

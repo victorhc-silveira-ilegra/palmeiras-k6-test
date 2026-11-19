@@ -75,7 +75,7 @@ help:
 	@echo -e "  $(GREEN)app-clean$(RESET)         - Remove artefatos e caches locais"
 	@echo -e ""
 	@echo -e "$(YELLOW)Testes de HML$(RESET)"
-	@echo -e "  $(GREEN)test-smoke$(RESET)        - Valida TARGET=azion, alb, ec2 ou all (SMOKE_PROFILE=functional ou strict)"
+	@echo -e "  $(GREEN)test-smoke$(RESET)        - Valida Azion, ALB privado via SSM e EC2 via SSM (TARGET=azion, alb, ec2 ou all)"
 	@echo -e "  $(GREEN)test-fanbase$(RESET)      - Simula a torcida em TARGET com escala e rampa explícitas; exige ALLOW_FANBASE_LOAD=true"
 	@echo -e "  $(GREEN)test-504$(RESET)          - Diagnostica MODE=compare, session ou sync em TARGET; compare usa os três caminhos"
 	@echo -e "  $(GREEN)test-run$(RESET)          - Executa SCENARIO no TARGET selecionado"

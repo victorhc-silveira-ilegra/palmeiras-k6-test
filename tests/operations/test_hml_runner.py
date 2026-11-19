@@ -27,6 +27,7 @@ key='/'.join(args[:2])
 root=pathlib.Path(os.environ['HML_FIXTURE'])
 if key=='ssm/start-session':
  params=json.loads(args[args.index('--parameters')+1])
+ (root/'tunnel-parameters').write_text(json.dumps({'document':args[args.index('--document-name')+1],'parameters':params}))
  print('Starting session with SessionId: fixture-session',flush=True)
  (root/'tunnel-pid').write_text(str(os.getpid()))
  s=socket.socket();s.bind(('127.0.0.1',int(params['localPortNumber'][0])));s.listen()
@@ -73,7 +74,13 @@ sys.exit(int(os.getenv('HML_TEST_EXIT','0')))
                     )
                     if target == "hml_alb":
                         self.assertEqual(values["TARGET_URL"], "https://hmlverdao.palmeiras.com.br")
-                        self.assertTrue(values["HML_ALB_IP"])
+                        self.assertTrue(values["HML_ALB_IP"].startswith("127.0.0.1:"))
+                        self.assertEqual(manifest["connection_mode"], "ssm_private_alb")
+                        session = json.loads((folder / "tunnel-parameters").read_text())
+                        self.assertEqual(session["document"], "AWS-StartPortForwardingSessionToRemoteHost")
+                        self.assertEqual(session["parameters"]["host"], ["172.31.1.10"])
+                        self.assertEqual(session["parameters"]["portNumber"], ["443"])
+                        self.assertTrue((folder / "terminated").exists())
                     if target == "hml_ec2_direct":
                         self.assertTrue(values["TARGET_URL"].startswith("http://127.0.0.1:"))
                         self.assertTrue((folder / "terminated").exists())
@@ -145,3 +152,21 @@ class HostAndMetricTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class PrivateAlbTests(unittest.TestCase):
+    def test_private_endpoint_rejects_wrong_vpc_public_and_missing_addresses(self):
+        from unittest.mock import Mock
+        from alb_smoke import private_address
+        from hml_context import discover
+        topology = discover(FixtureAws(), "current")
+        for items in [[], [{"VpcId": "other", "PrivateIpAddress": "172.31.1.10"}],
+                      [{"VpcId": "vpc-hml", "PrivateIpAddress": "8.8.8.8"}]]:
+            client = Mock()
+            client.call.return_value = {"NetworkInterfaces": items}
+            with self.assertRaises(RuntimeError):
+                private_address(client, topology)
+        client.call.return_value = {"NetworkInterfaces": [
+            {"VpcId": "vpc-hml", "PrivateIpAddress": "172.31.1.10"}]}
+        self.assertEqual(private_address(client, topology), "172.31.1.10")
+        filters = client.call.call_args.kwargs["filters"]
+        self.assertEqual(filters[0]["Values"], ["ELB app/teste-multi-proxy/abc"])

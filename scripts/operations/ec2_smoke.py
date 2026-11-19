@@ -37,7 +37,8 @@ def run_smoke(binary: str, target: str, args: list[str], scenario: str = "smoke"
 
 
 def run_tunnel_smoke(binary: str, args: list[str], scenario: str = "smoke",
-                     topology: dict | None = None, on_start=None, execute=None) -> int:
+                     topology: dict | None = None, on_start=None, execute=None,
+                     remote_host: str | None = None) -> int:
     client = Aws()
     topology = topology or discover(client)
     instance = online_instance(client, topology)
@@ -48,13 +49,16 @@ def run_tunnel_smoke(binary: str, args: list[str], scenario: str = "smoke",
     print(f"Teste HML na instância {instance}, via SSM para a porta {topology['ssm_port']}.", flush=True)
     if on_start:
         on_start(instance)
+    parameters = {"portNumber": [str(topology["ssm_port"])], "localPortNumber": [str(port)]}
+    document = "AWS-StartPortForwardingSession"
+    if remote_host:
+        document += "ToRemoteHost"
+        parameters["host"] = [remote_host]
     with tempfile.TemporaryFile(mode="w+") as log:
         process = subprocess.Popen([
             "aws", "ssm", "start-session", "--region", region,
-            "--target", instance, "--document-name", "AWS-StartPortForwardingSession",
-            "--parameters", json.dumps({
-                "portNumber": [str(topology["ssm_port"])], "localPortNumber": [str(port)],
-            }),
+            "--target", instance, "--document-name", document,
+            "--parameters", json.dumps(parameters),
         ], stdout=log, stderr=log, start_new_session=True)
         try:
             wait_for_tunnel(port, process)
