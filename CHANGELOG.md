@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.7.0...v1.7.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **makefile:** aprimora diagnostico de borda e corrige validacao de modo compare ([9b24d77](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/commit/9b24d7723d6cbd3c0dcf3e0c9a7f83f2b7d1f952))
+
 # [1.7.0](https://github.com/victorhc-silveira-ilegra/palmeiras-k6-test/compare/v1.6.0...v1.7.0) (2026-11-19)
 
 
