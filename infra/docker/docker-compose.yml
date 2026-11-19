@@ -5,11 +5,18 @@ services:
       dockerfile: infra/docker/Dockerfile
     image: palmeiras-k6-hml:local
     container_name: palmeiras-k6-hml
+    network_mode: host
     env_file:
       - path: .env
         required: false
     environment:
-      TARGET_ENV: ${TARGET_ENV:-hml_classic_elb}
+      HML_TOPOLOGY: ${HML_TOPOLOGY:-current}
+      HML_RUN_ID: ${HML_RUN_ID:-untracked}
+      SMOKE_PROFILE: ${SMOKE_PROFILE:-functional}
+      REQUEST_TIMEOUT: ${REQUEST_TIMEOUT:-}
+      HML_ALB_IP: ${HML_ALB_IP:-}
+      TARGET_ENV: ${TARGET_ENV:-azion_edge}
+      ALLOW_FANBASE_LOAD: ${ALLOW_FANBASE_LOAD:-false}
       SCALE_FACTOR: ${SCALE_FACTOR:-0.4}
       RAMP_UP: ${RAMP_UP:-5s}
       HOLD: ${HOLD:-15s}

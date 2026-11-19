@@ -1,3 +1,4 @@
+import { TargetEnvironment } from '../../domain/value_objects/TargetEnvironment.ts';
 import { check } from 'k6';
 import { SharedArray } from 'k6/data';
 import http from 'k6/http';
@@ -19,6 +20,8 @@ const fanbaseModelShared = new SharedArray<FanbaseModel>('fanbase_model', () => 
   JSON.parse(open('../../../data/fanbase-model.json')) as FanbaseModel,
 ]);
 
+const topologyConfig = JSON.parse(open('../../../data/hml-topology.json')) as { hostname: string };
+
 const k6MetricBindings = {
   cacheHitRate: new Rate('cache_hit_rate'),
   dynamicQueryDuration: new Trend('dynamic_query_duration', true),
@@ -39,9 +42,31 @@ const k6MetricBindings = {
   checkFn: check,
 };
 
-export function createScenarioRuntime(): RuntimeContainer {
+export function createScenarioNetworkOptions(environment: TargetEnvironment): Record<string, unknown> {
+  const ip = __ENV.HML_ALB_IP || __ENV.SMOKE_MULTI_PROXY_IP;
+  const mapped = Boolean(ip) && environment.baseUrl === 'https://hmlverdao.palmeiras.com.br';
+  if (environment.name === 'hml_alb' && environment.baseUrl.startsWith('https://') && !ip) {
+    throw new Error('Use o executor HML para resolver o ALB antes da execução.');
+  }
+  return {
+    insecureSkipTLSVerify: environment.insecureSkipTLSVerify,
+    hosts: mapped ? { [environment.hostHeader]: ip } : {},
+    tags: { run_id: __ENV.HML_RUN_ID || 'untracked', path: __ENV.HML_ROUTE || environment.name },
+  };
+}
+
+export function createScenarioRuntime(envSource = __ENV): RuntimeContainer {
+  const target = envSource.TARGET_ENV || 'azion_edge';
+  if (target === 'hml_classic_elb' && envSource.HML_TOPOLOGY !== 'legacy') {
+    throw new Error('O Classic ELB exige HML_TOPOLOGY=legacy.');
+  }
+  if (['hml_ec2_direct', 'ec2_direct'].includes(target) && !envSource.TARGET_URL) {
+    throw new Error('Use o executor HML para abrir o túnel de uma EC2 saudável.');
+  }
+  const targetUrl = envSource.TARGET_URL ||
+    (['azion_edge', 'hml_alb'].includes(target) ? `https://${topologyConfig.hostname}` : '');
   return createRuntimeContainer({
-    envSource: __ENV,
+    envSource: { ...envSource, TARGET_URL: targetUrl },
     k6Http: http,
     k6Metrics: k6MetricBindings,
     loadDataset: (): HmlDataset => {
@@ -63,10 +88,16 @@ export function createScenarioRuntime(): RuntimeContainer {
 
 export function createScenarioSummary(
   scenarioName: string,
-  envName: string
+  envName: string,
+  metadata?: Record<string, string>
 ): (data: unknown) => Record<string, string> {
   return createSummaryHandler(scenarioName, envName, {
     htmlReport,
     textSummary,
+  }, undefined, {
+    run_id: __ENV.HML_RUN_ID || 'untracked',
+    path: __ENV.HML_ROUTE || envName,
+    topology: __ENV.HML_TOPOLOGY || 'current',
+    ...metadata,
   });
 }

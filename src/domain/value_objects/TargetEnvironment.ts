@@ -25,7 +25,7 @@ const ENVIRONMENT_PRESETS: Record<EnvironmentName, TargetEnvironmentProps> = {
   },
   hml_alb: {
     name: 'hml_alb',
-    baseUrl: 'http://Hml-Site-Azion-206016081.us-east-1.elb.amazonaws.com',
+    baseUrl: 'https://hmlverdao.palmeiras.com.br',
     hostHeader: 'hmlverdao.palmeiras.com.br',
     insecureSkipTLSVerify: false,
     timeout: '310s',

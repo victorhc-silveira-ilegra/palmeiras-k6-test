@@ -1,7 +1,7 @@
 import { sleep } from 'k6';
 import { FanbaseLoadGuardError } from '../../domain/errors/DomainError.ts';
 import { getThresholdsForScenario } from '../../domain/services/ThresholdCatalog.ts';
-import { createScenarioRuntime, createScenarioSummary } from './_k6Runtime.ts';
+import { createScenarioRuntime, createScenarioSummary, createScenarioNetworkOptions } from './_k6Runtime.ts';
 
 const runtime = createScenarioRuntime();
 const allocation = runtime.fanbaseAllocation;
@@ -22,7 +22,7 @@ function buildPersonaScenario(targetVus: number, exec: string): Record<string, u
 }
 
 export const options = {
-  insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
+  ...createScenarioNetworkOptions(runtime.settings.environment),
   scenarios: {
     torcida_leitores_noticias: buildPersonaScenario(allocation.newsReaders, 'newsReadersFlow'),
     torcida_dia_de_jogo_tabela: buildPersonaScenario(allocation.matchdayLive, 'matchdayFlow'),

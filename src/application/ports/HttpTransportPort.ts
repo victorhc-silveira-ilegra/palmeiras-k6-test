@@ -15,6 +15,11 @@ export interface TransportResponse {
   body: string;
   headers: HeaderMap;
   durationMs: number;
+  error?: string | undefined;
+  errorCode?: number | undefined;
+  connectingMs?: number | undefined;
+  tlsHandshakingMs?: number | undefined;
+  waitingMs?: number | undefined;
 }
 
 export interface HttpTransportPort {

@@ -46,7 +46,7 @@ describe('RunWordpressRoutesUseCase, RunPalmeirasApiUseCase e ClaimMatchTicketUs
   it('executa todas as rotas WordPress com checks e metricas esperadas', () => {
     const { wp, transport, metrics } = createHarness((req) => {
       if (req.url.endsWith('/check.html')) {
-        return { status: 200, body: 'healthy', headers: {}, durationMs: 12 };
+        return { status: 200, body: 'OK', headers: {}, durationMs: 12 };
       }
       if (req.url.endsWith('/')) {
         return {

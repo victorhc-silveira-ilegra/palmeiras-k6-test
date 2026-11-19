@@ -9,7 +9,9 @@ declare module 'k6/http' {
     status: number;
     body: string | ArrayBuffer | null;
     headers: Record<string, string>;
-    timings: { duration: number };
+    error?: string;
+    error_code?: number;
+    timings: { duration: number; connecting?: number; tls_handshaking?: number; waiting?: number };
   }
   export interface K6Params {
     headers?: Record<string, string>;

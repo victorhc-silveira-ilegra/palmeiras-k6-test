@@ -22,7 +22,7 @@ describe('K6 Infrastructure Adapters Integration', () => {
     const mockK6Http: K6HttpClientLike = {
       get: (url, params) => {
         calls.push({ method: 'GET', url, redirects: params?.redirects, expected: params?.responseCallback });
-        return { status: 200, body: 'ok', headers: { 'X-Test': '1' }, timings: { duration: 15 } };
+        return { status: 200, body: 'ok', headers: { 'X-Test': '1' }, error: 'request timeout', error_code: 1050, timings: { duration: 15, waiting: 10, connecting: 2, tls_handshaking: 3 } };
       },
       head: (url, params) => {
         calls.push({ method: 'HEAD', url, redirects: params?.redirects });
@@ -40,6 +40,9 @@ describe('K6 Infrastructure Adapters Integration', () => {
     };
 
     const adapter = new K6HttpTransportAdapter(mockK6Http);
+    expect(adapter.request({ method: 'GET', url: 'https://hml.example', headers: {}, timeout: '15s', tags: {} }))
+      .toMatchObject({ durationMs: 15, waitingMs: 10, connectingMs: 2, tlsHandshakingMs: 3, error: 'request timeout', errorCode: 1050 });
+    calls.length = 0;
     expect(
       adapter.request({
         method: 'GET',
@@ -176,10 +179,11 @@ describe('K6 Infrastructure Adapters Integration', () => {
         htmlReport: (d) => `<html><body>${JSON.stringify(d)}</body></html>`,
         textSummary: () => 'SUMMARY TEXT',
       },
-      () => new Date('2026-11-11T22:00:00.000Z')
+      () => new Date('2026-11-11T22:00:00.000Z'),
+      { profile: 'functional', timeout: '15s', startedAtUtc: '2026-11-11T21:59:00.000Z' }
     );
 
-    const out = handler({ metrics: {} });
+    const out = handler({ metrics: {}, state: { testRunDurationMs: 12000 } });
     const htmlKey = 'reports/summary-hml_classic_elb-fanbase_simul-2026-11-11T22-00-00-000Z.html';
     const jsonKey = 'reports/summary-hml_classic_elb-fanbase_simul-2026-11-11T22-00-00-000Z.json';
     expect(out[htmlKey]).toContain('<html>');
@@ -190,6 +194,11 @@ describe('K6 Infrastructure Adapters Integration', () => {
     });
     expect(out.stdout).toContain('Objetivo:');
     expect(out.stdout).toContain('SUMMARY TEXT');
+    expect(out.stdout).toContain('functional');
+    expect(out[htmlKey]).toContain('15s');
+    expect(JSON.parse(out[jsonKey] ?? 'null').scenario).toMatchObject({
+      profile: 'functional', startedAtUtc: '2026-11-11T21:59:48.000Z', finishedAtUtc: '2026-11-11T22:00:00.000Z',
+    });
 
     const customTitleHandler = createSummaryHandler(
       'custom_cenario',

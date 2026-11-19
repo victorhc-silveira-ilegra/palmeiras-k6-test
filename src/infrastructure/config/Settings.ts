@@ -1,3 +1,4 @@
+import { SmokeProfile, resolveSmokeProfile } from '../../domain/services/SmokeProfile.ts';
 import { LogLevel } from '../../application/ports/EventLoggerPort.ts';
 import { DomainInvariantError } from '../../domain/errors/DomainError.ts';
 import { TargetEnvironment, assertNotProd } from '../../domain/value_objects/TargetEnvironment.ts';
@@ -16,6 +17,7 @@ export interface RuntimeSettings {
   logErrors: boolean;
   logErrorSampleRate: number;
   scenarioName: string;
+  smokeProfile: SmokeProfile;
   allowFanbaseLoad: boolean;
   wpAuthCookie: string;
   wpNonce: string;
@@ -50,7 +52,7 @@ function parseLogLevel(raw: string | undefined): LogLevel {
 }
 
 export function loadSettings(envSource: EnvRecord): RuntimeSettings {
-  const targetName = envSource.TARGET_ENV || 'hml_classic_elb';
+  const targetName = envSource.TARGET_ENV || 'azion_edge';
   const environment = TargetEnvironment.fromName(
     targetName,
     envSource.TARGET_URL,
@@ -61,6 +63,7 @@ export function loadSettings(envSource: EnvRecord): RuntimeSettings {
 
   return {
     environment,
+    smokeProfile: resolveSmokeProfile(envSource.SMOKE_PROFILE),
     scaleFactor: parsePositiveNumber(envSource.SCALE_FACTOR, 1, 'SCALE_FACTOR'),
     rampUp: envSource.RAMP_UP || '20s',
     hold: envSource.HOLD || '40s',

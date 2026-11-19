@@ -96,13 +96,15 @@ export function logEvent(
 export class SemanticLoggerAdapter implements EventLoggerPort {
   private readonly sink: LogSink;
   private readonly options: LoggerOptions;
+  private readonly context: Record<string, unknown>;
 
-  public constructor(sink: LogSink, options: LoggerOptions = {}) {
+  public constructor(sink: LogSink, options: LoggerOptions = {}, context: Record<string, unknown> = {}) {
     this.sink = sink;
     this.options = options;
+    this.context = context;
   }
 
   public emit(level: LogLevel, event: string, fields: Record<string, unknown> = {}): void {
-    logEvent(this.sink, level, event, fields, this.options);
+    logEvent(this.sink, level, event, { ...this.context, ...fields }, this.options);
   }
 }

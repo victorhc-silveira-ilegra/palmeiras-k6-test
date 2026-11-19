@@ -10,3 +10,19 @@ Este diretório reúne o orquestrador central da Matriz de Qualidade Unificada e
 - `cloudwatch-summary.sh`: Coleta de telemetria pós-teste dos últimos minutos (CPU da EC2 `homolog`, tráfego do Classic ELB `dev-sep-hml`, cluster Aurora `db-sep-1` e erros Nginx).
 
 Para detalhes da matriz de automação, consulte [docs/devops.md](../docs/devops.md) e [docs/recon-hml.md](../docs/recon-hml.md).
+
+## Descoberta e diagnóstico de HML
+
+Os executores e coletores usam operations/hml_context.py e
+data/hml-topology.json. Os scripts shell antigos delegam aos módulos Python,
+mantendo os nomes de entrada. A autenticação usa a cadeia do AWS CLI
+da máquina, incluindo AWS_PROFILE quando configurado. Os coletores não
+exportam credenciais para variáveis de ambiente.
+
+Use make obs-recon, make obs-collect, make obs-watch e make obs-diagnose.
+As opções --run e --minutes selecionam janela exata ou retroativa;
+--watch redescobre os recursos a cada ciclo.
+Veja docs/recon-hml.md para o formato do manifesto e do arquivo da Azion.
+
+Os testes de operações usam fixtures locais e integram a etapa Scripts/Test:
+python3 -m unittest discover -s tests/operations.

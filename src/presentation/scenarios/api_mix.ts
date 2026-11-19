@@ -1,11 +1,11 @@
 import { sleep } from 'k6';
 import { getThresholdsForScenario } from '../../domain/services/ThresholdCatalog.ts';
-import { createScenarioRuntime, createScenarioSummary } from './_k6Runtime.ts';
+import { createScenarioRuntime, createScenarioSummary, createScenarioNetworkOptions } from './_k6Runtime.ts';
 
 const runtime = createScenarioRuntime();
 
 export const options = {
-  insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
+  ...createScenarioNetworkOptions(runtime.settings.environment),
   scenarios: {
     varredura_apis_palmeiras_ttfb: {
       executor: 'per-vu-iterations',

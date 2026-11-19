@@ -53,6 +53,7 @@ def run_stage(stage: str, coverage_fail_under: int = 100, light_clean: bool = Fa
         return
 
     if stage == "test":
+        run_cmd([sys.executable, "-m", "unittest", "discover", "-s", "tests/operations"])
         print("=== [Scripts | Testes] ===")
         run_cmd([sys.executable, "scripts/operations/clean_workspace.py", "--help"])
         if shutil.which("make"):

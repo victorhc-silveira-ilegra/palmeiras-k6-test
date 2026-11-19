@@ -25,7 +25,7 @@ function resolveSemanticEventName(evaluation: SafetyEvaluationResult): string {
     return 'k6.timeout.gateway_504';
   }
   if (evaluation.isEdgeTransportDrop) {
-    return 'k6.timeout.edge_drop';
+    return 'k6.response.transport_error';
   }
   if (evaluation.rateLimited) {
     return 'k6.response.rate_limited';
@@ -87,7 +87,7 @@ export class EvaluateResponseUseCase {
     if (evaluation.isEdgeTransportDrop) {
       this.metrics.incrementEdgeTransportDrop();
     }
-    this.metrics.recordUpstreamTtfbDuration(cmd.response.durationMs);
+    this.metrics.recordUpstreamTtfbDuration(cmd.response.waitingMs ?? cmd.response.durationMs);
 
     if (evaluation.shouldLogFailure) {
       this.logger.emit('WARN', resolveSemanticEventName(evaluation), {
@@ -99,6 +99,11 @@ export class EvaluateResponseUseCase {
         vu: cmd.vu ?? 0,
         iter: cmd.iter ?? 0,
         reason: evaluation.failureReason,
+        error: cmd.response.error,
+        error_code: cmd.response.errorCode,
+        connecting_ms: cmd.response.connectingMs,
+        tls_handshaking_ms: cmd.response.tlsHandshakingMs,
+        waiting_ms: cmd.response.waitingMs,
       });
     }
 

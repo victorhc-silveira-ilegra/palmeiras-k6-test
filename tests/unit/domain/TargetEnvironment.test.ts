@@ -40,6 +40,7 @@ describe('TargetEnvironment', () => {
     expect(classic.timeout).toBe('310s');
 
     const alb = TargetEnvironment.fromName('hml_alb');
+    expect(alb.baseUrl).toBe('https://hmlverdao.palmeiras.com.br');
     expect(alb.insecureSkipTLSVerify).toBe(false);
     expect(alb.timeout).toBe('310s');
 

@@ -75,11 +75,13 @@ describe('EvaluateResponseUseCase', () => {
     expect(logger.events[4]?.event).toBe('k6.timeout.gateway_504');
 
     useCase.evaluateAndRecord({
-      response: { status: 0, body: '', headers: {}, durationMs: 60_000 },
+      response: { status: 0, body: '', headers: {}, durationMs: 60_000, waitingMs: 12, error: 'request timeout', errorCode: 1050, connectingMs: 3, tlsHandshakingMs: 4 },
       routeName: 'azion_drop',
     });
     expect(metrics.edgeTransportDrops).toBe(1);
-    expect(logger.events[5]?.event).toBe('k6.timeout.edge_drop');
+    expect(logger.events[5]?.event).toBe('k6.response.transport_error');
+    expect(logger.events[5]?.fields).toMatchObject({ error: 'request timeout', error_code: 1050, waiting_ms: 12 });
+    expect(metrics.upstreamTtfbDurations.at(-1)).toBe(12);
     expect(new FanbaseLoadGuardError().name).toBe('FanbaseLoadGuardError');
 
     const okResult = useCase.evaluateAndRecord({

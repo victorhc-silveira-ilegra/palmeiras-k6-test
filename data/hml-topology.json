@@ -1,0 +1,22 @@
+{
+  "account": "000491796368",
+  "region": "us-east-1",
+  "hostname": "hmlverdao.palmeiras.com.br",
+  "current": {
+    "alb": "teste-multi-proxy",
+    "target_group": "palmeiras-hml-https",
+    "asg": "TESTE-WP",
+    "ssm_port": 8083,
+    "rds_cluster": "db-sep",
+    "database": "sep_hml_db"
+  },
+  "legacy": {
+    "alb": "Hml-Site-Azion",
+    "target_group": "palmeiras-tg-hml",
+    "instance": "i-02b29195a2fdaf1e7",
+    "classic_elb": "dev-sep-hml",
+    "ssm_port": 84,
+    "rds_cluster": "db-sep-1",
+    "database": "sep_hml_db"
+  }
+}

@@ -1,10 +1,10 @@
 import { getThresholdsForScenario } from '../../domain/services/ThresholdCatalog.ts';
-import { createScenarioRuntime, createScenarioSummary } from './_k6Runtime.ts';
+import { createScenarioRuntime, createScenarioSummary, createScenarioNetworkOptions } from './_k6Runtime.ts';
 
 const runtime = createScenarioRuntime();
 
 export const options = {
-  insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
+  ...createScenarioNetworkOptions(runtime.settings.environment),
   scenarios: {
     teste_trava_sessao_pos_504: {
       executor: 'per-vu-iterations',

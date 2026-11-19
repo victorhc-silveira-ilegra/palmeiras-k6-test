@@ -46,9 +46,9 @@ export function createRuntimeContainer(deps: CompositionDependencies): RuntimeCo
     minLevel: settings.logLevel,
     logErrors: settings.logErrors,
     sampleRate: settings.logErrorSampleRate,
-  });
+  }, { run_id: deps.envSource.HML_RUN_ID });
   const clock = new SystemClockAdapter();
-  const transport = new K6HttpTransportAdapter(deps.k6Http);
+  const transport = new K6HttpTransportAdapter(deps.k6Http, { 'X-HML-Test-Run-Id': deps.envSource.HML_RUN_ID ?? 'untracked' });
   const metrics = new K6MetricsAdapter(deps.k6Metrics);
   const evaluator = new EvaluateResponseUseCase(metrics, logger);
   const client = new HttpRouteClient(settings.environment, transport, metrics, evaluator);

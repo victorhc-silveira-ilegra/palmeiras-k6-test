@@ -6,9 +6,14 @@ import {
 import { loadSettings } from '../../../src/infrastructure/config/Settings.ts';
 
 describe('loadSettings', () => {
+  it('valida o perfil do smoke', () => {
+    expect(loadSettings({}).smokeProfile).toBe('functional');
+    expect(loadSettings({ SMOKE_PROFILE: 'strict' }).smokeProfile).toBe('strict');
+    expect(() => loadSettings({ SMOKE_PROFILE: 'invalid' })).toThrow('SMOKE_PROFILE');
+  });
   it('carrega valores padrao seguros para HML quando __ENV esta vazio', () => {
     const settings = loadSettings({});
-    expect(settings.environment.name).toBe('hml_classic_elb');
+    expect(settings.environment.name).toBe('azion_edge');
     expect(settings.scaleFactor).toBe(1);
     expect(settings.rampUp).toBe('20s');
     expect(settings.hold).toBe('40s');

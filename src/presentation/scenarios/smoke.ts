@@ -1,33 +1,36 @@
 import { sleep } from 'k6';
-import { getThresholdsForScenario } from '../../domain/services/ThresholdCatalog.ts';
-import { createScenarioRuntime, createScenarioSummary } from './_k6Runtime.ts';
+import { getSmokeConfiguration, resolveSmokeProfile } from '../../domain/services/SmokeProfile.ts';
+import { createScenarioRuntime, createScenarioSummary, createScenarioNetworkOptions } from './_k6Runtime.ts';
 
-const runtime = createScenarioRuntime();
+const profile = resolveSmokeProfile(__ENV.SMOKE_PROFILE);
+const config = getSmokeConfiguration(profile);
+const runtime = createScenarioRuntime({
+  ...__ENV,
+  REQUEST_TIMEOUT: __ENV.REQUEST_TIMEOUT?.trim() || config.timeout,
+});
+const startedAtUtc = new Date().toISOString();
 const multiProxyIp = __ENV.SMOKE_MULTI_PROXY_IP;
 const directMultiProxy =
   runtime.settings.environment.baseUrl === 'https://hmlverdao.palmeiras.com.br' &&
   runtime.settings.environment.name === 'azion_edge' &&
   Boolean(multiProxyIp);
-const route = directMultiProxy ? 'hml_multi_proxy' : runtime.settings.environment.name;
+const route = __ENV.HML_ROUTE || (directMultiProxy ? 'hml_multi_proxy' : runtime.settings.environment.name);
 
 export const options = {
-  insecureSkipTLSVerify: runtime.settings.environment.insecureSkipTLSVerify,
-  hosts: directMultiProxy ? { 'hmlverdao.palmeiras.com.br': multiProxyIp } : {},
+  ...createScenarioNetworkOptions(runtime.settings.environment),
   scenarios: {
-    validacao_rapida_saude: {
-      executor: 'constant-vus',
-      vus: 2,
-      duration: '20s',
-      gracefulStop: '5s',
-    },
+    validacao_rapida_saude: config.scenario,
   },
-  thresholds: getThresholdsForScenario('smoke'),
+  thresholds: config.thresholds,
 };
 
 export function setup(): void {
   runtime.logger.emit('INFO', 'k6.cycle.started', {
     scenario: 'smoke',
     env: route,
+    profile,
+    request_timeout: runtime.settings.environment.timeout,
+    started_at_utc: startedAtUtc,
   });
 }
 
@@ -49,4 +52,9 @@ export default function (): void {
   sleep(1);
 }
 
-export const handleSummary = createScenarioSummary('smoke', route);
+export const handleSummary = createScenarioSummary('smoke', route, {
+  profile,
+  path: route,
+  timeout: runtime.settings.environment.timeout,
+  startedAtUtc,
+});

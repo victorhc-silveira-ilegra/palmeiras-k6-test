@@ -55,24 +55,33 @@ export function createSummaryHandler(
   scenarioName: string,
   envName: string,
   renderers: SummaryRenderers,
-  nowFactory: () => Date = (): Date => new Date()
+  nowFactory: () => Date = (): Date => new Date(),
+  metadata: Record<string, string> = {}
 ): (data: unknown) => Record<string, string> {
   return (data: unknown): Record<string, string> => {
-    const timestamp = nowFactory().toISOString().replace(/[:.]/g, '-');
+    const finishedAtUtc = nowFactory().toISOString();
+    const timestamp = finishedAtUtc.replace(/[:.]/g, '-');
     const prefix = `reports/summary-${envName}-${scenarioName}-${timestamp}`;
     const title = resolveExecutiveReportTitle(scenarioName, envName);
     const description = SCENARIO_DETAILS[scenarioName]?.description ??
       'Consulte as métricas e verificações para avaliar a execução.';
-    const scenario = { id: scenarioName, environment: envName, title, description };
+    const durationMs = (data as { state?: { testRunDurationMs?: number } }).state?.testRunDurationMs;
+    const timedMetadata = typeof durationMs === 'number'
+      ? { ...metadata, startedAtUtc: new Date(Date.parse(finishedAtUtc) - durationMs).toISOString() }
+      : metadata;
+    const scenario = { id: scenarioName, environment: envName, title, description, ...timedMetadata, finishedAtUtc };
+    const details = Object.entries({ ...timedMetadata, finishedAtUtc })
+      .map(([key, value]) => `${key} = ${value}`).join('\n');
+    const escapedDetails = details.replaceAll('&', '&amp;').replaceAll('<', '&lt;');
     const html = renderers.htmlReport(data, { title }).replace(
       /<body\b[^>]*>/i,
-      (body) => `${body}<p style="margin: 1rem 2rem"><strong>Objetivo:</strong> ${description}</p>`
+      (body) => `${body}<p style="margin: 1rem 2rem"><strong>Objetivo:</strong> ${description}</p><pre style="margin: 1rem 2rem">${escapedDetails}</pre>`
     );
     const summary = renderers.textSummary(data, { indent: ' ', enableColors: true });
     return {
       [`${prefix}.html`]: html,
       [`${prefix}.json`]: JSON.stringify({ ...(data as Record<string, unknown>), scenario }),
-      stdout: `\n${title}\nObjetivo: ${description}\n\n${summary}`,
+      stdout: `\n${title}\nObjetivo: ${description}\n${details}\n\n${summary}`,
     };
   };
 }

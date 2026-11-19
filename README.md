@@ -96,7 +96,8 @@ Ajuste as variáveis no arquivo `.env` local ou via `-e CHAVE=VALOR` na chamada 
 
 | Variável | Descrição | Padrão |
 | :--- | :--- | :--- |
-| `TARGET_ENV` | Alvo HML permitido (`hml_classic_elb`, `hml_alb`, `azion_edge`) | `hml_classic_elb` |
+| `SMOKE_PROFILE` | Perfil do smoke (`functional` ou `strict`) | `functional` |
+| `TARGET_ENV` | Alvo de HML, resolvido pelo controlador | `azion_edge` |
 | `SCALE_FACTOR` | Fator de escala dos VUs simultâneos no cenário `fanbase_simul.ts` | `1` |
 | `RAMP_UP` | Duração da rampa de subida no `fanbase_simul.ts` | `20s` |
 | `HOLD` | Duração de sustentação no `fanbase_simul.ts` | `40s` |
@@ -124,7 +125,9 @@ make app-ci             # Executa o pipeline completo dos 5 estágios com tabela
 make app-clean          # Remove dist/, coverage/ e __pycache__
 
 # Operações em HML (Proibido PROD)
-make hml-azion-smoke    # Verifica o WordPress de HML pela Azion
+make hml-azion-smoke    # Verifica rotas e autenticação com timeout padrão de 15s
+make hml-multi-proxy-smoke  # Executa o mesmo smoke direto no ALB, com TLS validado
+make hml-azion-smoke SMOKE_PROFILE=strict  # Aplica os limites de desempenho
 make hml-azion-fanbase ALLOW_FANBASE_LOAD=true SCALE_FACTOR=0.4 RAMP_UP=5s HOLD=15s RAMP_DOWN=5s
 make hml-cw-multi-proxy CW_MINUTES=15  # Consulta métricas do ALB teste-multi-proxy
 
@@ -141,3 +144,16 @@ make docker-down        # Para o contêiner preservando reports/
 - **Matriz CI/CD**: Matriz de 4 áreas temáticas (`TypeScript/k6`, `Docker`, `GitHub`, `Scripts`) e 5 estágios determinísticos (`Lint`, `Security`, `Test`, `Validate`, `Build`) documentada em [docs/devops.md](docs/devops.md).
 - **Harness Universal de Agentes**: Regras de conduta, segurança HML e skills operacionais em [.agents/](.agents/README.md) e [AGENTS.md](AGENTS.md).
 - **Documentação Técnica Completa**: Disponível no diretório [docs/](docs/README.md).
+
+
+## Operação atual de HML
+
+Use `make test-smoke TARGET=azion`, `TARGET=alb`, `TARGET=ec2` ou
+`TARGET=all`. A topologia atual é descoberta na AWS antes de cada rodada.
+O controlador produz um manifesto em `reports/runs/` para correlação com
+`make obs-diagnose RUN=...`.
+
+`make obs-collect` e `make obs-watch` consultam o ALB e os membros atuais
+do ASG. Traces são informados como indisponíveis enquanto não houver APM
+confirmado. Os detalhes de execução e o formato de logs da Azion estão em
+[Reconhecimento de HML](docs/recon-hml.md).

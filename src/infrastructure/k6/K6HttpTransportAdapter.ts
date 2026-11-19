@@ -15,14 +15,16 @@ export interface K6HttpClientLike {
 
 export class K6HttpTransportAdapter implements HttpTransportPort {
   private readonly httpClient: K6HttpClientLike;
+  private readonly commonHeaders: Record<string, string>;
 
-  public constructor(httpClient: K6HttpClientLike) {
+  public constructor(httpClient: K6HttpClientLike, commonHeaders: Record<string, string> = {}) {
     this.httpClient = httpClient;
+    this.commonHeaders = commonHeaders;
   }
 
   public request(req: TransportRequest): TransportResponse {
     const params: K6Params = {
-      headers: req.headers,
+      headers: { ...this.commonHeaders, ...req.headers },
       redirects: 0,
       tags: req.tags,
       timeout: req.timeout,
@@ -38,6 +40,11 @@ export class K6HttpTransportAdapter implements HttpTransportPort {
       body: typeof raw.body === 'string' ? raw.body : '',
       headers: raw.headers,
       durationMs: raw.timings.duration,
+      error: raw.error,
+      errorCode: raw.error_code,
+      connectingMs: raw.timings.connecting,
+      tlsHandshakingMs: raw.timings.tls_handshaking,
+      waitingMs: raw.timings.waiting,
     };
   }
 

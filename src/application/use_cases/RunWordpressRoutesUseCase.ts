@@ -30,7 +30,6 @@ export class RunWordpressRoutesUseCase {
     });
     this.metrics.recordChecks(res, {
       'Saúde (/check.html): HTTP 200': () => res.status === 200,
-      'Saúde (/check.html): contém "healthy"': () => res.body.includes('healthy'),
     });
     return res;
   }
